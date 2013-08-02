@@ -5,11 +5,8 @@
 
 struct VirtioBlkBase* virtio_blk_OpenDev(struct VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq, UINT32 unitNum, UINT32 flags)
 {
-	if(unitNum >= VirtioBlkBase->NumAvailUnits)
-	{
-		ioreq->io_Error = IOERR_OPENFAIL;
-	}
-	else
+	ioreq->io_Error = IOERR_OPENFAIL;
+	if(unitNum <= VirtioBlkBase->NumAvailUnits)
 	{
 		VirtioBlkBase->Device.dd_Library.lib_OpenCnt++;
 		VirtioBlkBase->Device.dd_Library.lib_Flags &= ~LIBF_DELEXP;
@@ -18,7 +15,6 @@ struct VirtioBlkBase* virtio_blk_OpenDev(struct VirtioBlkBase *VirtioBlkBase, st
 		ioreq->io_Unit = (struct  Unit *)&VirtioBlkBase->VirtioBlkUnit[unitNum];
 		ioreq->io_Device = (struct Device *)VirtioBlkBase;
 	}
-
 	return(VirtioBlkBase);
 }
 

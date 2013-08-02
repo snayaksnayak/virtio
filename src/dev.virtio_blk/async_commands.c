@@ -6,7 +6,7 @@
 void VirtioBlkInvalid(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkInvalid!\n");
-	VirtioBlk_end_command(VirtioBlkBase, IOERR_NOCMD, ioreq);
+	VirtioBlk_end_command(VirtioBlkBase, ioreq, IOERR_NOCMD);
 	return;
 }
 
@@ -14,7 +14,7 @@ void VirtioBlkInvalid(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 void VirtioBlkStart(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkStart!\n");
-	VirtioBlk_end_command(VirtioBlkBase, 0, ioreq);
+	VirtioBlk_end_command(VirtioBlkBase, ioreq, 0);
 	return;
 }
 
@@ -22,7 +22,7 @@ void VirtioBlkStart(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 void VirtioBlkStop(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkStop!\n");
-	VirtioBlk_end_command(VirtioBlkBase, 0, ioreq);
+	VirtioBlk_end_command(VirtioBlkBase, ioreq, 0);
 	return;
 }
 
@@ -42,7 +42,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		Enable(ipl);
 		//should set a valid error status rather than 0
-		VirtioBlk_end_command(VirtioBlkBase, 0, ioreq);
+		VirtioBlk_end_command(VirtioBlkBase, ioreq,0 );
 	}
 	else
 	{
@@ -73,7 +73,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		Enable(ipl);
 		//should set a valid error status rather than 0
-		VirtioBlk_end_command(VirtioBlkBase, 0, ioreq);
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0);
 	}
 	else
 	{
@@ -96,7 +96,7 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 	((struct VirtioBlkRequest*)ioreq)->info = vb->Info;
 	Enable(ipl);
 
-	VirtioBlk_end_command(VirtioBlkBase, 0, (struct IOStdReq *)ioreq);
+	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
 	return;
 }
 
@@ -105,14 +105,14 @@ void (*VirtioBlkCmdVector[])(VirtioBlkBase *, struct IOStdReq * ) =
 {
 	//standard
 	VirtioBlkInvalid, //VirtioBlkInvalid
-	0, //VirtioBlkReset
+	VirtioBlkInvalid, //VirtioBlkReset
 	VirtioBlkRead, //VirtioBlkRead
 	VirtioBlkWrite, //VirtioBlkWrite
-	0, //VirtioBlkUpdate
-	0, //VirtioBlkClear
+	VirtioBlkInvalid, //VirtioBlkUpdate
+	VirtioBlkInvalid, //VirtioBlkClear
 	VirtioBlkStop, //VirtioBlkStop
 	VirtioBlkStart, //VirtioBlkStart
-	0, //VirtioBlkFlush
+	VirtioBlkInvalid, //VirtioBlkFlush
 
 	//non standard
 	VirtioBlkGetDeviceInfo //VirtioBlkGetDeviceInfo
