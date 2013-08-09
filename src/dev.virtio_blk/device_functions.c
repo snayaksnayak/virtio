@@ -6,7 +6,7 @@
 struct VirtioBlkBase* virtio_blk_OpenDev(struct VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq, UINT32 unitNum, UINT32 flags)
 {
 	ioreq->io_Error = IOERR_OPENFAIL;
-	if(unitNum <= VirtioBlkBase->NumAvailUnits)
+	if(unitNum < VirtioBlkBase->NumAvailUnits)
 	{
 		VirtioBlkBase->Device.dd_Library.lib_OpenCnt++;
 		VirtioBlkBase->Device.dd_Library.lib_Flags &= ~LIBF_DELEXP;

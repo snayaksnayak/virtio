@@ -13,7 +13,7 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 	int unit_num;
 
 	//find out which unit generated this irq
-	for (unit_num=0; unit_num <= VirtioBlkBase->NumAvailUnits; unit_num++)
+	for (unit_num=0; unit_num < VirtioBlkBase->NumAvailUnits; unit_num++)
 	{
 		vb = &((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb);
 		vd = &(vb->vd);
