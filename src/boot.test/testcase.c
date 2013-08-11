@@ -1009,8 +1009,16 @@ void test_virtio_blk(APTR SysBase)
 
 	// lets try to read the device
 	UINT32 i;
-//number of sectors to read/write at once
-#define NUM_SECTORS 8
+
+	//number of sectors to read/write at once
+	#define NUM_SECTORS 16
+
+	UINT8* buf = AllocVec(512*NUM_SECTORS, MEMF_PUBLIC);
+	if (buf == NULL)
+	{
+		DPrintF("ERROR: No Buffer\n");
+	}
+
 	UINT32 j = NUM_SECTORS;
 	for(i = 0; i < 8192; i+=j) //8192 max
 	{
@@ -1024,7 +1032,7 @@ void test_virtio_blk(APTR SysBase)
 
 		io->sector_start = i;
 		io->num_sectors = NUM_SECTORS;
-		UINT8 buf[512*NUM_SECTORS];
+		
 		memset(buf, 0, 512*NUM_SECTORS);
 		io->buf = buf;
 
@@ -1042,6 +1050,9 @@ void test_virtio_blk(APTR SysBase)
 		}
 */
 	}
+
+	FreeVec(buf);
+
 	// Close device
 	DPrintF("Closing virtio_blk Device 0\n");
 	CloseDevice((struct IORequest *)io);
