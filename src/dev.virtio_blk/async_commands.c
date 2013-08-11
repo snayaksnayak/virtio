@@ -29,7 +29,7 @@ void VirtioBlkStop(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 
 void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	DPrintF("Inside VirtioBlkRead!\n");
+	//DPrintF("Inside VirtioBlkRead!\n");
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	UINT32 ipl;
 	ipl = Disable();

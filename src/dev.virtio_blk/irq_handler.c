@@ -4,7 +4,7 @@
 
 __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, VirtioBlkBase *VirtioBlkBase, APTR SysBase)
 {
-	DPrintF("VirtioBlkIRQServer\n");
+	//DPrintF("VirtioBlkIRQServer\n");
 	struct LibVirtioBase *LibVirtioBase = VirtioBlkBase->LibVirtioBase;
 
 	VirtioBlk *vb;
@@ -21,7 +21,7 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 		//See if virtio device generated an interrupt(1) or not(0)
 		UINT8 isr;
 		isr=VirtioRead8(vd->io_addr, VIRTIO_ISR_STATUS_OFFSET);
-		DPrintF("VirtioBlkIRQServer: isr= %d\n", isr);
+		//DPrintF("VirtioBlkIRQServer: isr= %d\n", isr);
 
 		if (isr == 1)
 		{
@@ -29,7 +29,7 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 			unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
 			struct VirtioBlkRequest *head_req = (struct VirtioBlkRequest *)GetHead(&unit->unit_MsgPort.mp_MsgList);
 
-			DPrintF("One request complete\n");
+			//DPrintF("One request complete\n");
 			Remove((struct Node *)head_req);
 			head_req->node.io_Error = 0;
 			ReplyMsg((struct Message *)head_req);

@@ -179,8 +179,8 @@ void VirtioBlk_transfer(VirtioBlkBase *VirtioBlkBase, VirtioBlk* vb, UINT32 sect
 	//clear status
 	vb->status[0] = 1; //0 means success, 1 means error, 2 means unsupported
 
-	DPrintF("\n\n\nsector = %d\n", sector_start);
-	DPrintF("idx = %d\n", (vd->queues[0]).vring.avail->idx);
+	//DPrintF("\n\n\nsector = %d\n", sector_start);
+	//DPrintF("idx = %d\n", (vd->queues[0]).vring.avail->idx);
 
 
 
