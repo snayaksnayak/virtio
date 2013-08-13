@@ -1,11 +1,5 @@
-#define IOERR_OPENFAIL	 (-1) /* device/unit failed to open */
-#define IOERR_ABORTED	 (-2) /* request terminated early [after AbortIO()] */
-#define IOERR_NOCMD	 (-3) /* command not supported by device */
-#define IOERR_BADLENGTH	 (-4) /* not a valid length (usually IO_LENGTH) */
-#define IOERR_BADADDRESS (-5) /* invalid address (misaligned or bad range) */
-#define IOERR_UNITBUSY	 (-6) /* device opens ok, but requested unit is busy */
-#define IOERR_SELFTEST   (-7) /* hardware failed self-test */
-
+#ifndef device_error_h
+#define device_error_h
 
 #define	TDERR_NotSpecified	20	/* general catchall */
 #define	TDERR_NoSecHdr		21	/* couldn't even find a sector */
@@ -34,3 +28,5 @@
 
 /*----- OpenDevice io_Error values -----*/
 #define	HFERR_NoBoard		50	/* Open failed for non-existant board */
+
+#endif //device_error_h

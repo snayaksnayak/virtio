@@ -1,5 +1,6 @@
 #include "exec_funcs.h"
 #include "virtio_blk_internal.h"
+#include "device_error.h"
 
 #define SysBase VirtioBlkBase->VirtioBlk_SysBase
 
@@ -42,7 +43,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		Enable(ipl);
 		//should set a valid error status rather than 0
-		VirtioBlk_end_command(VirtioBlkBase, ioreq,0 );
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, TDERR_BadSecID );
 	}
 	else
 	{
@@ -73,7 +74,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		Enable(ipl);
 		//should set a valid error status rather than 0
-		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0);
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, TDERR_BadSecID);
 	}
 	else
 	{
