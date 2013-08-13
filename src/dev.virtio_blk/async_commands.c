@@ -42,8 +42,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	(vb->Info.geometry.sectors + 1)))
 	{
 		Enable(ipl);
-		//should set a valid error status rather than 0
-		VirtioBlk_end_command(VirtioBlkBase, ioreq, TDERR_BadSecID );
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_NotEnoughSectors );
 	}
 	else
 	{
@@ -73,8 +72,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	(vb->Info.geometry.sectors + 1)))
 	{
 		Enable(ipl);
-		//should set a valid error status rather than 0
-		VirtioBlk_end_command(VirtioBlkBase, ioreq, TDERR_BadSecID);
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_NotEnoughSectors);
 	}
 	else
 	{

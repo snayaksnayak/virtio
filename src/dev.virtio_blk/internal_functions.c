@@ -28,7 +28,7 @@ void VirtioBlk_queue_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *iore
 }
 
 
-void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq, UINT32 error)
+void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq, INT8 error)
 {
 	ioreq->io_Error = error;
 	return;
