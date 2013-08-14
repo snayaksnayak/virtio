@@ -34,8 +34,8 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	UINT32 ipl;
 	ipl = Disable();
-	if((((struct VirtioBlkRequest*)ioreq)->sector_start +
-	((struct VirtioBlkRequest*)ioreq)->num_sectors - 1)
+	if((ioreq->io_Offset +
+	ioreq->io_Length - 1)
 	>=
 	(vb->Info.geometry.cylinders *
 	vb->Info.geometry.heads *
@@ -46,13 +46,10 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	}
 	else
 	{
-		//set that this is a read request
-		((struct VirtioBlkRequest*)ioreq)->write = 0;
-
 		// Ok, we add this to the list
 		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
 		Enable(ipl);
-		CLEAR_BITS(((struct VirtioBlkRequest*)ioreq)->node.io_Flags, IOF_QUICK);
+		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
 	}
 	return;
 }
@@ -64,8 +61,8 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	UINT32 ipl;
 	ipl = Disable();
-	if((((struct VirtioBlkRequest*)ioreq)->sector_start +
-	((struct VirtioBlkRequest*)ioreq)->num_sectors - 1)
+	if((ioreq->io_Offset +
+	ioreq->io_Length - 1)
 	>=
 	(vb->Info.geometry.cylinders *
 	vb->Info.geometry.heads *
@@ -76,13 +73,10 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	}
 	else
 	{
-		//set that this is a write request
-		((struct VirtioBlkRequest*)ioreq)->write = 1;
-
 		// Ok, we add this to the list
 		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
 		Enable(ipl);
-		CLEAR_BITS(((struct VirtioBlkRequest*)ioreq)->node.io_Flags, IOF_QUICK);
+		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
 	}
 	return;
 }
@@ -92,7 +86,7 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	DPrintF("Inside VirtioBlkGetDeviceInfo!\n");
 	UINT32 ipl = Disable();
-	((struct VirtioBlkRequest*)ioreq)->info = vb->Info;
+	ioreq->io_Data = &(vb->Info);
 	Enable(ipl);
 
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);

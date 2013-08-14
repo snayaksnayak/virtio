@@ -981,7 +981,7 @@ void DetectVirtio(APTR SysBase);
 void test_virtio_blk(APTR SysBase)
 {
 	struct MsgPort *mp=NULL;
-	struct VirtioBlkRequest *io=NULL;
+	struct IOStdReq *io=NULL;
 
 	// We need a proper MsgPort to get Messages
 	mp = CreateMsgPort();
@@ -992,10 +992,10 @@ void test_virtio_blk(APTR SysBase)
 	}
 
 	// Now we need a VirtioBlkRequest Structure
-	io = CreateIORequest(mp, sizeof(struct VirtioBlkRequest));
+	io = CreateIORequest(mp, sizeof(struct IOStdReq));
 	if (io == NULL)
 	{
-		DPrintF("Couldnt create VirtioBlkRequest (no Memory?)\n");
+		DPrintF("Couldnt create IOStdReq (no Memory?)\n");
 		goto end;
 	}
 
@@ -1020,27 +1020,24 @@ void test_virtio_blk(APTR SysBase)
 	}
 
 	UINT32 j = NUM_SECTORS;
-	for(i = 0; i < 8192; i+=j) //8192 max
+	for(i = 0; i < 32; i+=j) //8192 max
 	{
 		// lets try a to read or write some sectors from the device
 
-		io->node.io_Command = CMD_READ;
-		io->write = 0;
+		io->io_Command = CMD_READ;
+		//io->io_Command = CMD_WRITE;
 
-		//io->node.io_Command = CMD_WRITE;
-		//io->write = 1;
+		io->io_Offset = i;
+		io->io_Length = NUM_SECTORS;
 
-		io->sector_start = i;
-		io->num_sectors = NUM_SECTORS;
-		
 		memset(buf, 0, 512*NUM_SECTORS);
-		io->buf = buf;
+		io->io_Data = buf;
 
 		// post request to the virtio device in sync way
 		//DPrintF("We will read a sector from the device\n");
 		DoIO((struct IORequest *) io );
 		//DPrintF("Return after reading a sector from the device\n");
-/*
+
 		for(int k=0; k<j; k++)
 		{
 			DPrintF("buf[512*%d+0]= %x\n", k, buf[512*k+0]);
@@ -1048,7 +1045,7 @@ void test_virtio_blk(APTR SysBase)
 			DPrintF("buf[512*%d+2]= %x\n", k, buf[512*k+2]);
 			DPrintF("buf[512*%d+3]= %x\n", k, buf[512*k+3]);
 		}
-*/
+
 	}
 
 	FreeVec(buf);

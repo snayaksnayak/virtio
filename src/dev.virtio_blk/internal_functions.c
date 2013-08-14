@@ -41,13 +41,22 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *io
 	//collect unit from request structure
 	struct Unit	*unit = ioreq->io_Unit;
 	//collect head request from unit's request queue
-	struct VirtioBlkRequest *head_req = (struct VirtioBlkRequest *)GetHead(&unit->unit_MsgPort.mp_MsgList);
+	struct IOStdReq *head_req = (struct IOStdReq *)GetHead(&unit->unit_MsgPort.mp_MsgList);
 
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
-	UINT32 sector_start = head_req->sector_start;
-	UINT32 num_sectors = head_req->num_sectors;
-	UINT8 write = head_req->write;
-	UINT8 *buf = head_req->buf;
+	UINT32 sector_start = head_req->io_Offset;
+	UINT32 num_sectors = head_req->io_Length;
+	UINT8 write;
+	if(head_req->io_Command == CMD_WRITE)
+	{
+		write=1;
+	}
+	else if(head_req->io_Command == CMD_READ)
+	{
+		write=0;
+	}
+	UINT8 *buf = head_req->io_Data;
+
 	VirtioBlk_transfer(VirtioBlkBase, vb, sector_start, num_sectors, write, buf);
 	Enable(ipl);
 	return;
@@ -61,7 +70,7 @@ int VirtioBlk_setup(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb, INT32 unit_num)
 	VirtioDevice* vd = &(vb->vd);
 
 	if (!PCIFindDeviceByUnit(VIRTIO_VENDOR_ID, VIRTIO_BLK_DEVICE_ID, &(vd->pciAddr), unit_num)) {
-		DPrintF("VirtioBlk_setup: No Virtio device found.");
+		DPrintF("VirtioBlk_setup: No Virtio device found.\n");
 		return 0;
 	}
 	else

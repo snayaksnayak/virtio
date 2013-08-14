@@ -27,11 +27,11 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 		{
 			//now use the found unit_num to continue processing
 			unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
-			struct VirtioBlkRequest *head_req = (struct VirtioBlkRequest *)GetHead(&unit->unit_MsgPort.mp_MsgList);
+			struct IOStdReq *head_req = (struct IOStdReq *)GetHead(&unit->unit_MsgPort.mp_MsgList);
 
 			//DPrintF("One request complete\n");
 			Remove((struct Node *)head_req);
-			head_req->node.io_Error = 0;
+			head_req->io_Error = 0;
 			ReplyMsg((struct Message *)head_req);
 
 			struct IOStdReq* next_req = (struct IOStdReq *)GetHead(&unit->unit_MsgPort.mp_MsgList);

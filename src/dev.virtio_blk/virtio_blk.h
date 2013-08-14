@@ -66,17 +66,6 @@ struct VirtioBlkDeviceInfo
 };
 
 
-struct VirtioBlkRequest
-{
-    struct IOStdReq node;
-    struct VirtioBlkDeviceInfo info;
-    UINT32 sector_start;
-    UINT32 num_sectors;
-    UINT8 write;
-    UINT8* buf;
-};
-
-
 typedef struct VirtioBlk
 {
 	//dev structure
