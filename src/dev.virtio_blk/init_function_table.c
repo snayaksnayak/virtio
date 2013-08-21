@@ -45,6 +45,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 {
 	VirtioBlkBase->VirtioBlk_SysBase = SysBase;
 	VirtioBlkBase->NumAvailUnits = 0;
+	VirtioBlkBase->VirtioBlk_BootTask = (struct Task *)FindTask(NULL);
 
 	struct ExpansionBase *ExpansionBase = (struct ExpansionBase *)OpenLibrary("expansion.library", 0);
 	VirtioBlkBase->ExpansionBase = ExpansionBase;
@@ -113,18 +114,16 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		//Driver is ready to go!
 		VirtioWrite8(vd->io_addr, VIRTIO_DEV_STATUS_OFFSET, VIRTIO_STATUS_DRV_OK);
 
-		//collect device info for future uses
-		VirtioBlk_configuration(VirtioBlkBase, vb);
-
 		// start irq server after driver is ok
 		VirtioBlkBase->VirtioBlkIntServer = CreateIntServer(DevName, VIRTIO_BLK_INT_PRI, VirtioBlkIRQServer, VirtioBlkBase);
 		AddIntServer(vd->intLine, VirtioBlkBase->VirtioBlkIntServer);
 
-		// Initialise Unit Command Queue
-		NewList((struct List *)&VirtioBlkBase->VirtioBlkUnit[unit_num].vb_unit.unit_MsgPort.mp_MsgList);
-		VirtioBlkBase->VirtioBlkUnit[unit_num].vb_unit.unit_MsgPort.mp_Node.ln_Name = (STRPTR)DevName;
-		VirtioBlkBase->VirtioBlkUnit[unit_num].vb_unit.unit_MsgPort.mp_Node.ln_Type = NT_MSGPORT;
-		VirtioBlkBase->VirtioBlkUnit[unit_num].vb_unit.unit_MsgPort.mp_SigTask = NULL;
+		//start worker task
+		DPrintF("virtio_blk_InitDev: create a worker task and wait\n");
+		SetSignal(0L, SIGF_SINGLE);
+		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask = TaskCreate(DevName, VirtioBlk_WorkerTaskFunction, VirtioBlkBase, 8192, 20);
+		Wait(SIGF_SINGLE);
+		DPrintF("virtio_blk_InitDev: a worker task created, waiting finished\n");
 
 		//save number of available units
 		VirtioBlkBase->NumAvailUnits++;

@@ -10,6 +10,7 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 	VirtioBlk *vb;
 	VirtioDevice* vd;
 	struct  Unit *unit;
+	struct IOStdReq *head_req;
 	int unit_num;
 
 	//find out which unit generated this irq
@@ -27,19 +28,14 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 		{
 			//now use the found unit_num to continue processing
 			unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
-			struct IOStdReq *head_req = (struct IOStdReq *)GetHead(&unit->unit_MsgPort.mp_MsgList);
+			head_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
 
-			//DPrintF("One request complete\n");
-			Remove((struct Node *)head_req);
-			head_req->io_Error = 0;
-			ReplyMsg((struct Message *)head_req);
-
-			struct IOStdReq* next_req = (struct IOStdReq *)GetHead(&unit->unit_MsgPort.mp_MsgList);
-			if(next_req != NULL)
+			if(TEST_BITS(head_req->io_Flags, IOF_SERVICING))
 			{
-				//start processing another request
-				VirtioBlk_process_request(VirtioBlkBase, next_req);
+				SET_BITS(head_req->io_Flags, IOF_DONE);
+				Signal(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask, SIGF_SINGLE);
 			}
+
 			return 1; // was for us, dont proceed daisy chain
 		}
 	}

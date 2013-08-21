@@ -16,6 +16,11 @@
 
 #define VIRTIO_BLK_INT_PRI 0
 
+#define IOF_QUEUED (1<<4)
+#define IOF_CURRENT (1<<5)
+#define IOF_SERVICING (1<<6)
+#define IOF_DONE (1<<7)
+
 // Units
 #define VB_UNIT_MAX		4
 
@@ -98,6 +103,7 @@ struct VirtioBlkUnit
 {
 	struct Unit vb_unit;
 	struct VirtioBlk vb;
+	Task				*VirtioBlk_WorkerTask;
 };
 
 typedef struct VirtioBlkBase
@@ -109,9 +115,10 @@ typedef struct VirtioBlkBase
 
 	UINT32				VirtioBlkIRQ;
 	struct Interrupt	*VirtioBlkIntServer;
+	Task				*VirtioBlk_BootTask;
 
 	struct VirtioBlkUnit VirtioBlkUnit[VB_UNIT_MAX];
-	UINT32 NumAvailUnits;
+	volatile UINT32 NumAvailUnits;
 
 } VirtioBlkBase;
 
@@ -149,6 +156,12 @@ int VirtioBlk_setup(VirtioBlkBase *VirtioBlkBase,VirtioBlk *vb, INT32 unit_num);
 int VirtioBlk_alloc_phys_requests(VirtioBlkBase *VirtioBlkBase,VirtioBlk *vb);
 int VirtioBlk_configuration(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
 void VirtioBlk_transfer(VirtioBlkBase *VirtioBlkBase, VirtioBlk* vb, UINT32 sector_start, UINT32 num_sectors, UINT8 write, UINT8* buf);
+
+UINT32 VirtioBlk_WorkerTaskFunction(VirtioBlkBase *VirtioBlkBase, APTR *SysBase);
+INT8 VirtioBlk_InitMsgPort(struct MsgPort *mport, APTR *SysBase);
+void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase);
+
+
 
 
 //irq handler

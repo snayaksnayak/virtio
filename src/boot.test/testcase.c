@@ -16,7 +16,7 @@
 static struct TestBase *test_Init(struct TestBase *TestBase, UINT32 *segList, struct SysBase *SysBase);
 static void test_TestTask(APTR data, struct SysBase *SysBase);
 
-static const char name[] = "test";
+static const char name[] = "test.device";
 static const char version[] = "test 0.1\n";
 static const char EndResident;
 #define DEVICE_VERSION 0
@@ -1034,9 +1034,9 @@ void test_virtio_blk(APTR SysBase)
 		io->io_Data = buf;
 
 		// post request to the virtio device in sync way
-		//DPrintF("We will read a sector from the device\n");
+		DPrintF("We will read a sector from the device\n");
 		DoIO((struct IORequest *) io );
-		//DPrintF("Return after reading a sector from the device\n");
+		DPrintF("Return after reading a sector from the device\n");
 
 		for(int k=0; k<j; k++)
 		{

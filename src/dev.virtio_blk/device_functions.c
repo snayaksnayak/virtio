@@ -45,6 +45,7 @@ void virtio_blk_BeginIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	UINT8 cmd = ioreq->io_Command;
 	ioreq->io_Error = 0;
+	ioreq->io_Flags &= (~(IOF_QUEUED|IOF_CURRENT|IOF_SERVICING|IOF_DONE))&0x0ff;
 
 	if (cmd == CMD_START
 	|| cmd == CMD_STOP

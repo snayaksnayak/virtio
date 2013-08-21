@@ -6,7 +6,6 @@
 
 #define SysBase VirtioBlkBase->VirtioBlk_SysBase
 
-
 void VirtioBlk_queue_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	UINT32 ipl = Disable();
@@ -15,13 +14,9 @@ void VirtioBlk_queue_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *iore
 
 	if (ioreq->io_Error == 0)
 	{
-		PutMsg(&unit->unit_MsgPort, &ioreq->io_Message);
-		//if it is the head request
-		if (GetHead(&unit->unit_MsgPort.mp_MsgList) == &ioreq->io_Message.mn_Node)
-		{
-			//start processing
-			VirtioBlk_process_request(VirtioBlkBase, ioreq);
-		}
+		SET_BITS(ioreq->io_Flags, IOF_QUEUED);
+		DPrintF("VirtioBlk_queue_command: PutMsg to port = %x\n", &(unit->unit_MsgPort));
+		PutMsg(&(unit->unit_MsgPort), &(ioreq->io_Message));
 	}
 	Enable(ipl);
 	return;
