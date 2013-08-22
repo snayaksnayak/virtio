@@ -11,6 +11,13 @@
 char DevName[] = "virtio_blk.device";
 char Version[] = "\0$VER: virtio_blk.device 0.1 ("__DATE__")\r\n";
 
+char* TaskName[VB_UNIT_MAX]={
+	"virtio_blk.task0", //For unit 0
+	"virtio_blk.task1", //For unit 1
+	"virtio_blk.task2", //For unit 2
+	"virtio_blk.task3"  //For unit 3
+};
+
 #define MAX_VIRTIO_BLK_FEATURES 10
 
 static virtio_feature blkf[MAX_VIRTIO_BLK_FEATURES] = {
@@ -121,7 +128,12 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		//start worker task
 		DPrintF("virtio_blk_InitDev: create a worker task and wait\n");
 		SetSignal(0L, SIGF_SINGLE);
-		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask = TaskCreate(DevName, VirtioBlk_WorkerTaskFunction, VirtioBlkBase, 8192, 20);
+		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData = AllocVec(sizeof(struct VirtioBlkTaskData), MEMF_FAST|MEMF_CLEAR);
+		if(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData == NULL)
+			break;
+		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData->VirtioBlkBase = VirtioBlkBase;
+		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData->unitNum = unit_num;
+		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask = TaskCreate(TaskName[unit_num], VirtioBlk_WorkerTaskFunction, VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData, 8192, 20);
 		Wait(SIGF_SINGLE);
 		DPrintF("virtio_blk_InitDev: a worker task created, waiting finished\n");
 

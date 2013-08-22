@@ -86,11 +86,20 @@ typedef struct VirtioBlk
 
 } VirtioBlk;
 
+struct VirtioBlkBase;
+struct VirtioBlkTaskData
+{
+	struct VirtioBlkBase* VirtioBlkBase;
+	UINT32 unitNum;
+};
+
 struct VirtioBlkUnit
 {
 	struct Unit vb_unit;
 	struct VirtioBlk vb;
 	Task				*VirtioBlk_WorkerTask;
+	struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData;
+	INT8 taskWakeupSignal;
 };
 
 typedef struct VirtioBlkBase
@@ -105,7 +114,7 @@ typedef struct VirtioBlkBase
 	Task				*VirtioBlk_BootTask;
 
 	struct VirtioBlkUnit VirtioBlkUnit[VB_UNIT_MAX];
-	volatile UINT32 NumAvailUnits;
+	UINT32 NumAvailUnits;
 
 } VirtioBlkBase;
 

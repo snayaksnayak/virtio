@@ -2,15 +2,25 @@
 #include "virtio_blk_internal.h"
 
 
-UINT32 VirtioBlk_WorkerTaskFunction(VirtioBlkBase *VirtioBlkBase, APTR *SysBase)
+UINT32 VirtioBlk_WorkerTaskFunction(struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData, APTR *SysBase)
 {
-	//For every unit, this function is called once
-	//to create a worker task.
-	//When this function gets called, NumAvailUnits
-	//represents the unit number for which this worker task is created.
-	volatile UINT32 unit_num = VirtioBlkBase->NumAvailUnits;
+	VirtioBlkBase* VirtioBlkBase;
+	UINT32 unit_num = VirtioBlk_WorkerTaskData->unitNum;
+	VirtioBlkBase = VirtioBlk_WorkerTaskData->VirtioBlkBase;
+
 	DPrintF("VirtioBlk_WorkerTaskFunction: unit_num= %d\n", unit_num);
 	VirtioBlk_InitMsgPort(&(VirtioBlkBase->VirtioBlkUnit[unit_num].vb_unit.unit_MsgPort), SysBase);
+
+	INT8 signalNum = -1;
+	signalNum = AllocSignal(-1);
+	if (signalNum != -1)
+    {
+		VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal = signalNum;
+	}
+	else
+	{
+		DPrintF("VirtioBlk_WorkerTaskFunction: failed to allocate signal\n");
+	}
 
 	DPrintF("VirtioBlk_WorkerTaskFunction: Signal sent\n");
 	Signal(VirtioBlkBase->VirtioBlk_BootTask, SIGF_SINGLE);
@@ -57,22 +67,27 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 	mport = &(unit->unit_MsgPort);
 	while(1)
 	{
-		DPrintF("VirtioBlk_CheckPort loop\n");
-
 		curr_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
 		DPrintF("VirtioBlk_CheckPort curr_req = %x\n", curr_req);
 		if (curr_req != NULL)
 		{
+			UINT32 ipl;
+			ipl = Disable();
 			if(TEST_BITS(curr_req->io_Flags, IOF_QUEUED))
 			{
-				SetSignal(0L, SIGF_SINGLE);
 				SET_BITS(curr_req->io_Flags, IOF_SERVICING);
 				//start processing another request
 				VirtioBlk_process_request(VirtioBlkBase, curr_req);
-				DPrintF("VirtioBlk_CheckPort: wait after VirtioBlk_process_request\n");
-				Wait(SIGF_SINGLE);
+				Enable(ipl);
+				DPrintF("VirtioBlk_CheckPort: wait for irq\n");
+				Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
+			}
+			else
+			{
+				Enable(ipl);
 			}
 
+			ipl = Disable();
 			if(TEST_BITS(curr_req->io_Flags, IOF_DONE))
 			{
 				DPrintF("One request complete\n");
@@ -80,13 +95,13 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 				curr_req->io_Error = 0;
 				ReplyMsg((struct Message *)curr_req);
 			}
+			Enable(ipl);
 		}
 		else
 		{
-			DPrintF("VirtioBlk_CheckPort before wait\n");
 			DPrintF("VirtioBlk_CheckPort waiting on unit_num= %d, unit= %x, port= %x\n", unit_num, unit, mport);
 			WaitPort(mport);
-			DPrintF("VirtioBlk_CheckPort after wait\n");
+			DPrintF("VirtioBlk_CheckPort waiting over\n");
 		}
 	}
 }

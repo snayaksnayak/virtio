@@ -33,7 +33,7 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 			if(TEST_BITS(head_req->io_Flags, IOF_SERVICING))
 			{
 				SET_BITS(head_req->io_Flags, IOF_DONE);
-				Signal(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask, SIGF_SINGLE);
+				Signal(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask, (1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal)));
 			}
 
 			return 1; // was for us, dont proceed daisy chain

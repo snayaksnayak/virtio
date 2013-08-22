@@ -86,7 +86,7 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	DPrintF("Inside VirtioBlkGetDeviceInfo!\n");
 	UINT32 ipl = Disable();
-	ioreq->io_Data = &(vb->Info);
+	*((struct VirtioBlkDeviceInfo*)(ioreq->io_Data)) = vb->Info;
 	Enable(ipl);
 
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);

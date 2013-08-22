@@ -99,11 +99,20 @@ typedef struct VirtioBlk
 
 } VirtioBlk;
 
+struct VirtioBlkBase;
+struct VirtioBlkTaskData
+{
+	struct VirtioBlkBase* VirtioBlkBase;
+	UINT32 unitNum;
+};
+
 struct VirtioBlkUnit
 {
 	struct Unit vb_unit;
 	struct VirtioBlk vb;
 	Task				*VirtioBlk_WorkerTask;
+	struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData;
+	INT8 taskWakeupSignal;
 };
 
 typedef struct VirtioBlkBase
@@ -118,7 +127,7 @@ typedef struct VirtioBlkBase
 	Task				*VirtioBlk_BootTask;
 
 	struct VirtioBlkUnit VirtioBlkUnit[VB_UNIT_MAX];
-	volatile UINT32 NumAvailUnits;
+	UINT32 NumAvailUnits;
 
 } VirtioBlkBase;
 
@@ -157,7 +166,7 @@ int VirtioBlk_alloc_phys_requests(VirtioBlkBase *VirtioBlkBase,VirtioBlk *vb);
 int VirtioBlk_configuration(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
 void VirtioBlk_transfer(VirtioBlkBase *VirtioBlkBase, VirtioBlk* vb, UINT32 sector_start, UINT32 num_sectors, UINT8 write, UINT8* buf);
 
-UINT32 VirtioBlk_WorkerTaskFunction(VirtioBlkBase *VirtioBlkBase, APTR *SysBase);
+UINT32 VirtioBlk_WorkerTaskFunction(struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData, APTR *SysBase);
 INT8 VirtioBlk_InitMsgPort(struct MsgPort *mport, APTR *SysBase);
 void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase);
 
