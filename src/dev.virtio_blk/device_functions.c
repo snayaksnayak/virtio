@@ -64,12 +64,18 @@ void virtio_blk_BeginIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 
 void virtio_blk_AbortIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
+	UINT32 ipl = Disable();
 	if(ioreq->io_Message.mn_Node.ln_Type != NT_REPLYMSG)
     {
 		Remove((struct Node *)ioreq);
 		ioreq->io_Error = IOERR_ABORTED;
+		Enable(ipl);
 		ReplyMsg((struct Message *)ioreq);
+		return;
 	}
+
+	Enable(ipl);
+	return;
 }
 
 

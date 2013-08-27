@@ -67,14 +67,16 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 	mport = &(unit->unit_MsgPort);
 	while(1)
 	{
+		UINT32 ipl;
+		ipl = Disable();
+
 		curr_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
 		DPrintF("VirtioBlk_CheckPort curr_req = %x\n", curr_req);
 		if (curr_req != NULL)
 		{
-			UINT32 ipl;
-			ipl = Disable();
 			if(TEST_BITS(curr_req->io_Flags, IOF_QUEUED))
 			{
+				CLEAR_BITS(curr_req->io_Flags, IOF_QUEUED);
 				SET_BITS(curr_req->io_Flags, IOF_SERVICING);
 				//start processing another request
 				VirtioBlk_process_request(VirtioBlkBase, curr_req);
@@ -82,23 +84,22 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 				DPrintF("VirtioBlk_CheckPort: wait for irq\n");
 				Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 			}
-			else
-			{
-				Enable(ipl);
-			}
-
-			ipl = Disable();
-			if(TEST_BITS(curr_req->io_Flags, IOF_DONE))
+			else if(TEST_BITS(curr_req->io_Flags, IOF_DONE))
 			{
 				DPrintF("One request complete\n");
 				Remove((struct Node *)curr_req);
 				curr_req->io_Error = 0;
+				Enable(ipl);
 				ReplyMsg((struct Message *)curr_req);
 			}
-			Enable(ipl);
+			else
+			{
+				Enable(ipl);
+			}
 		}
 		else
 		{
+			Enable(ipl);
 			DPrintF("VirtioBlk_CheckPort waiting on unit_num= %d, unit= %x, port= %x\n", unit_num, unit, mport);
 			WaitPort(mport);
 			DPrintF("VirtioBlk_CheckPort waiting over\n");

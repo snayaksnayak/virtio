@@ -6,33 +6,31 @@
 
 #define SysBase VirtioBlkBase->VirtioBlk_SysBase
 
+//Call this function atomically
 void VirtioBlk_queue_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	UINT32 ipl = Disable();
-
 	struct Unit	*unit = ioreq->io_Unit;
 
 	if (ioreq->io_Error == 0)
 	{
 		SET_BITS(ioreq->io_Flags, IOF_QUEUED);
-		DPrintF("VirtioBlk_queue_command: PutMsg to port = %x\n", &(unit->unit_MsgPort));
+		DPrintF("VirtioBlk_queue_command: PutMsg %x to port %x\n", &(ioreq->io_Message), &(unit->unit_MsgPort));
 		PutMsg(&(unit->unit_MsgPort), &(ioreq->io_Message));
 	}
-	Enable(ipl);
+
 	return;
 }
 
-
+//Call this function atomically
 void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq, INT8 error)
 {
 	ioreq->io_Error = error;
 	return;
 }
 
-
+//Call this function atomically
 void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	UINT32 ipl = Disable();
 	//collect unit from request structure
 	struct Unit	*unit = ioreq->io_Unit;
 	//collect head request from unit's request queue
@@ -53,7 +51,6 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *io
 	UINT8 *buf = head_req->io_Data;
 
 	VirtioBlk_transfer(VirtioBlkBase, vb, sector_start, num_sectors, write, buf);
-	Enable(ipl);
 	return;
 }
 

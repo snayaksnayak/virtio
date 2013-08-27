@@ -41,16 +41,17 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	vb->Info.geometry.heads *
 	(vb->Info.geometry.sectors + 1)))
 	{
-		Enable(ipl);
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_NotEnoughSectors );
 	}
 	else
 	{
 		// Ok, we add this to the list
 		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
-		Enable(ipl);
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
+
 	}
+
+	Enable(ipl);
 	return;
 }
 
@@ -68,16 +69,16 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	vb->Info.geometry.heads *
 	(vb->Info.geometry.sectors + 1)))
 	{
-		Enable(ipl);
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_NotEnoughSectors);
 	}
 	else
 	{
 		// Ok, we add this to the list
 		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
-		Enable(ipl);
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
 	}
+
+	Enable(ipl);
 	return;
 }
 
@@ -87,9 +88,9 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 	DPrintF("Inside VirtioBlkGetDeviceInfo!\n");
 	UINT32 ipl = Disable();
 	*((struct VirtioBlkDeviceInfo*)(ioreq->io_Data)) = vb->Info;
-	Enable(ipl);
-
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+
+	Enable(ipl);
 	return;
 }
 

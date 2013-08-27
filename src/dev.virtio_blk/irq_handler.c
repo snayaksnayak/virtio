@@ -4,7 +4,7 @@
 
 __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, VirtioBlkBase *VirtioBlkBase, APTR SysBase)
 {
-	//DPrintF("VirtioBlkIRQServer\n");
+	DPrintF("VirtioBlkIRQServer\n");
 	struct LibVirtioBase *LibVirtioBase = VirtioBlkBase->LibVirtioBase;
 
 	VirtioBlk *vb;
@@ -22,7 +22,7 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 		//See if virtio device generated an interrupt(1) or not(0)
 		UINT8 isr;
 		isr=VirtioRead8(vd->io_addr, VIRTIO_ISR_STATUS_OFFSET);
-		//DPrintF("VirtioBlkIRQServer: isr= %d\n", isr);
+		DPrintF("VirtioBlkIRQServer: isr= %d\n", isr);
 
 		if (isr == 1)
 		{
@@ -32,9 +32,12 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 
 			if(TEST_BITS(head_req->io_Flags, IOF_SERVICING))
 			{
+				CLEAR_BITS(head_req->io_Flags, IOF_SERVICING);
 				SET_BITS(head_req->io_Flags, IOF_DONE);
-				Signal(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask, (1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal)));
 			}
+
+			DPrintF("VirtioBlkIRQServer: sent signal to unit %d\n", unit_num);
+			Signal(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask, (1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal)));
 
 			return 1; // was for us, dont proceed daisy chain
 		}
