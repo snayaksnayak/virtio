@@ -125,12 +125,27 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		VirtioBlkBase->VirtioBlkIntServer = CreateIntServer(DevName, VIRTIO_BLK_INT_PRI, VirtioBlkIRQServer, VirtioBlkBase);
 		AddIntServer(vd->intLine, VirtioBlkBase->VirtioBlkIntServer);
 
+		//initialize unit structure
+		VirtioBlkBase->VirtioBlkUnit[unit_num].DiskPresence = VirtioBlk_getDiskPresence(VirtioBlkBase, vb);
+		VirtioBlkBase->VirtioBlkUnit[unit_num].DiskChangeCounter = 0;
+
+		VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache = AllocVec((vb->Info.geometry.sectors + 1) * vb->Info.blk_size, MEMF_FAST|MEMF_CLEAR);
+		if(VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache == NULL)
+		{
+			break;
+		}
+		VirtioBlkBase->VirtioBlkUnit[unit_num].CacheFlag = VBF_INVALID;
+		VirtioBlkBase->VirtioBlkUnit[unit_num].TrackNum = 0;
+
 		//start worker task
 		DPrintF("virtio_blk_InitDev: create a worker task and wait\n");
 		SetSignal(0L, SIGF_SINGLE);
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData = AllocVec(sizeof(struct VirtioBlkTaskData), MEMF_FAST|MEMF_CLEAR);
 		if(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData == NULL)
+		{
+			FreeVec(VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache);
 			break;
+		}
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData->VirtioBlkBase = VirtioBlkBase;
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData->unitNum = unit_num;
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask = TaskCreate(TaskName[unit_num], VirtioBlk_WorkerTaskFunction, VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData, 8192, 20);

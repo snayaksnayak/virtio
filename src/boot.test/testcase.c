@@ -1011,7 +1011,7 @@ void test_virtio_blk(APTR SysBase)
 	UINT32 i;
 
 	//number of sectors to read/write at once
-	#define NUM_SECTORS 16
+	#define NUM_SECTORS 7
 
 	UINT8* buf = AllocVec(512*NUM_SECTORS, MEMF_PUBLIC);
 	if (buf == NULL)
@@ -1020,7 +1020,7 @@ void test_virtio_blk(APTR SysBase)
 	}
 
 	UINT32 j = NUM_SECTORS;
-	for(i = 0; i < 32; i+=j) //8192 max
+	for(i = 0; i < 1024; i+=j) //8192 max
 	{
 		// lets try a to read or write some sectors from the device
 
@@ -1028,7 +1028,7 @@ void test_virtio_blk(APTR SysBase)
 		//io->io_Command = CMD_WRITE;
 
 		io->io_Offset = i;
-		io->io_Length = NUM_SECTORS;
+		io->io_Length = NUM_SECTORS*512;
 
 		memset(buf, 0, 512*NUM_SECTORS);
 		io->io_Data = buf;

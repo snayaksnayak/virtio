@@ -30,10 +30,10 @@ __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, V
 			unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
 			head_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
 
-			if(TEST_BITS(head_req->io_Flags, IOF_SERVICING))
+			if(TEST_BITS(head_req->io_Flags, IOF_CURRENT))
 			{
-				CLEAR_BITS(head_req->io_Flags, IOF_SERVICING);
-				SET_BITS(head_req->io_Flags, IOF_DONE);
+				CLEAR_BITS(head_req->io_Flags, IOF_CURRENT);
+				SET_BITS(head_req->io_Flags, IOF_SERVICING);
 			}
 
 			DPrintF("VirtioBlkIRQServer: sent signal to unit %d\n", unit_num);

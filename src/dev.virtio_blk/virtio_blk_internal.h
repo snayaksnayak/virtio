@@ -14,21 +14,35 @@
 #define DEVNAME "virtio_blk"
 #define DEVVER  " 0.1 __DATE__"
 
+//interrupt priority
 #define VIRTIO_BLK_INT_PRI 0
 
+//io flags
 #define IOF_QUEUED (1<<4)
 #define IOF_CURRENT (1<<5)
 #define IOF_SERVICING (1<<6)
 #define IOF_DONE (1<<7)
+
+//disk present in drive?
+#define VBF_NO_DISK	0x01
+#define VBF_DISK_IN	0x00
+
+//flags for cache
+#define VBF_CLEAN      (0)
+#define VBF_DIRTY      (1<<0)
+#define VBF_INVALID      (1<<1)
 
 // Units
 #define VB_UNIT_MAX		4
 
 // non standard async commands
 #define VB_GETDEVICEINFO (CMD_NONSTD+0)
+#define VB_GETDISKCHANGECOUNT (CMD_NONSTD+1)
+#define VB_GETDISKPRESENCESTATUS (CMD_NONSTD+2)
+#define VB_EJECT (CMD_NONSTD+3)
+#define VB_FORMAT (CMD_NONSTD+4)
 
-
-//****************
+//device id
 #define VIRTIO_BLK_DEVICE_ID 0x1001
 
 /* These two define direction. */
@@ -49,7 +63,6 @@
 #define VIRTIO_BLK_F_FLUSH		9	// Cache flush command support
 #define VIRTIO_BLK_F_TOPOLOGY	10	// Topology information is available
 #define VIRTIO_BLK_ID_BYTES		20	// ID string length
-
 
 
 /* This is the first element of the read scatter-gather list. */
@@ -113,6 +126,14 @@ struct VirtioBlkUnit
 	Task				*VirtioBlk_WorkerTask;
 	struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData;
 	INT8 taskWakeupSignal;
+
+	UINT8 DiskPresence; //disk present in drive?
+	UINT32 DiskChangeCounter; //disk change counter
+
+	//for cache
+	APTR TrackCache; //holds data of one track
+	UINT32 CacheFlag; //maintains state of cache, dirty etc.
+	UINT32 TrackNum; //which track is on cache
 };
 
 typedef struct VirtioBlkBase
@@ -131,6 +152,12 @@ typedef struct VirtioBlkBase
 
 } VirtioBlkBase;
 
+struct IOExtVB
+{
+	struct  IOStdReq iovb_Req;
+	UINT32   iovb_DiskChangeCount;  // Diskchange counter
+	UINT32   iovb_SectorLabel;      // Sector label data
+};
 
 extern char DevName[];
 extern char Version[];
@@ -154,12 +181,18 @@ void VirtioBlkStart(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkStop(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkGetDiskChangeCount(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkGetDiskPresenceStatus(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkEject(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkFormat(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 
 //internals
 void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq, INT8 error);
 void VirtioBlk_queue_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
-void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num);
 
 int VirtioBlk_setup(VirtioBlkBase *VirtioBlkBase,VirtioBlk *vb, INT32 unit_num);
 int VirtioBlk_alloc_phys_requests(VirtioBlkBase *VirtioBlkBase,VirtioBlk *vb);
@@ -170,7 +203,7 @@ UINT32 VirtioBlk_WorkerTaskFunction(struct VirtioBlkTaskData *VirtioBlk_WorkerTa
 INT8 VirtioBlk_InitMsgPort(struct MsgPort *mport, APTR *SysBase);
 void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase);
 
-
+int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
 
 
 //irq handler

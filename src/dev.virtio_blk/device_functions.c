@@ -1,5 +1,6 @@
 #include "exec_funcs.h"
 #include "virtio_blk_internal.h"
+#include "device_error.h"
 
 #define SysBase VirtioBlkBase->VirtioBlk_SysBase
 
@@ -14,6 +15,10 @@ struct VirtioBlkBase* virtio_blk_OpenDev(struct VirtioBlkBase *VirtioBlkBase, st
 		ioreq->io_Error = 0;
 		ioreq->io_Unit = (struct  Unit *)&VirtioBlkBase->VirtioBlkUnit[unitNum];
 		ioreq->io_Device = (struct Device *)VirtioBlkBase;
+	}
+	else
+	{
+		ioreq->io_Error = BLK_ERR_BadUnitNum;
 	}
 	return(VirtioBlkBase);
 }
@@ -50,7 +55,14 @@ void virtio_blk_BeginIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	if (cmd == CMD_START
 	|| cmd == CMD_STOP
 	|| cmd == CMD_READ
-	|| cmd == CMD_WRITE)
+	|| cmd == CMD_WRITE
+	|| cmd == CMD_CLEAR
+	|| cmd == CMD_UPDATE
+	|| cmd == VB_GETDEVICEINFO
+	|| cmd == VB_GETDISKCHANGECOUNT
+	|| cmd == VB_GETDISKPRESENCESTATUS
+	|| cmd == VB_EJECT
+	|| cmd == VB_FORMAT)
 	{
 		//valid command
 	}

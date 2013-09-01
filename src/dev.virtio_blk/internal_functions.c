@@ -28,29 +28,131 @@ void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq,
 	return;
 }
 
-//Call this function atomically
-void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
+void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 {
-	//collect unit from request structure
-	struct Unit	*unit = ioreq->io_Unit;
-	//collect head request from unit's request queue
-	struct IOStdReq *head_req = (struct IOStdReq *)GetHead(&unit->unit_MsgPort.mp_MsgList);
+	struct  Unit *unit;
+	struct IOStdReq *curr_req;
+	struct VirtioBlkUnit *vbu;
 
-	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
-	UINT32 sector_start = head_req->io_Offset;
-	UINT32 num_sectors = head_req->io_Length;
-	UINT8 write;
-	if(head_req->io_Command == CMD_WRITE)
-	{
-		write=1;
-	}
-	else if(head_req->io_Command == CMD_READ)
-	{
-		write=0;
-	}
-	UINT8 *buf = head_req->io_Data;
+	unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
+	vbu = &(VirtioBlkBase->VirtioBlkUnit[unit_num]);
 
-	VirtioBlk_transfer(VirtioBlkBase, vb, sector_start, num_sectors, write, buf);
+	while(1)
+	{
+		UINT32 ipl;
+		ipl = Disable();
+
+		curr_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
+		DPrintF("VirtioBlk_process_request curr_req = %x\n", curr_req);
+		if (curr_req != NULL)
+		{
+			if(TEST_BITS(curr_req->io_Flags, IOF_CURRENT)
+			|| TEST_BITS(curr_req->io_Flags, IOF_SERVICING))
+			{
+				if(TEST_BITS(curr_req->io_Flags, IOF_SERVICING))
+				{
+					DPrintF("VirtioBlk_process_request curr_req is IOF_SERVICING\n");
+					CLEAR_BITS(curr_req->io_Flags, IOF_SERVICING);
+					SET_BITS(curr_req->io_Flags, IOF_CURRENT);
+				}
+				else
+				{
+					DPrintF("VirtioBlk_process_request curr_req is IOF_CURRENT\n");
+					//it is IOF_CURRENT
+				}
+
+				UINT32 track_offset = curr_req->io_Offset / (vbu->vb.Info.geometry.sectors + 1); // divide by 64 (1 track = 64 sectors)
+				UINT32 sector_offset = curr_req->io_Offset % (vbu->vb.Info.geometry.sectors + 1);
+				UINT32 remain = curr_req->io_Length / (vbu->vb.Info.blk_size); // divide by 512
+
+				DPrintF("VirtioBlk_process_request: track_offset = %d\n", track_offset);
+				DPrintF("VirtioBlk_process_request: sector_offset = %d\n", sector_offset);
+				DPrintF("VirtioBlk_process_request: remain = %d\n", remain);
+				DPrintF("VirtioBlk_process_request: (vb->Info.geometry.sectors + 1) = %d\n", (vbu->vb.Info.geometry.sectors + 1));
+				DPrintF("VirtioBlk_process_request: (vb->Info.blk_size) = %d\n", (vbu->vb.Info.blk_size));
+
+				DPrintF("VirtioBlk_process_request: vbu->TrackNum = %d\n", vbu->TrackNum);
+
+				if((track_offset == vbu->TrackNum) && (vbu->CacheFlag != VBF_INVALID))
+				{
+					if(remain <= (vbu->vb.Info.geometry.sectors + 1) - (sector_offset))
+					{
+						DPrintF("VirtioBlk_process_request: lengh within track size\n");
+						memcpy(curr_req->io_Data + curr_req->io_Actual, vbu->TrackCache , remain * (vbu->vb.Info.blk_size));
+						curr_req->io_Actual += remain * (vbu->vb.Info.blk_size);
+						remain = 0;
+					}
+					else
+					{
+						DPrintF("VirtioBlk_process_request: lengh outside track size\n");
+						memcpy(curr_req->io_Data + curr_req->io_Actual, vbu->TrackCache , ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size));
+						curr_req->io_Actual += ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size);
+						remain = remain - ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset));
+						DPrintF("VirtioBlk_process_request: curr_req->io_Actual = %d\n", curr_req->io_Actual);
+						DPrintF("VirtioBlk_process_request: remain = %d\n", remain);
+					}
+
+					if(remain == 0)
+					{
+						DPrintF("VirtioBlk_process_request: One request complete\n");
+						Remove((struct Node *)curr_req);
+						CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
+						SET_BITS(curr_req->io_Flags, IOF_DONE);
+						curr_req->io_Error = 0;
+						Enable(ipl);
+
+						ReplyMsg((struct Message *)curr_req);
+						break;
+					}
+					else
+					{
+						track_offset++;
+						sector_offset=0;
+
+						curr_req->io_Offset = track_offset * (vbu->vb.Info.geometry.sectors + 1);
+						curr_req->io_Length = remain * (vbu->vb.Info.blk_size);
+						DPrintF("VirtioBlk_process_request: track_offset++ = %d\n", track_offset);
+						DPrintF("VirtioBlk_process_request: curr_req->io_Offset = %d\n", curr_req->io_Offset);
+						DPrintF("VirtioBlk_process_request: curr_req->io_Length = %d\n", curr_req->io_Length);
+						Enable(ipl);
+					}
+				}
+				else
+				{
+					UINT8 write;
+					if(curr_req->io_Command == CMD_WRITE)
+					{
+						write=1;
+					}
+					else if(curr_req->io_Command == CMD_READ)
+					{
+						write=0;
+					}
+					UINT8 *buf = (UINT8 *)vbu->TrackCache;
+
+					vbu->TrackNum = track_offset;
+					vbu->CacheFlag = VBF_CLEAN;
+
+					VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), track_offset * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), write, buf);
+					Enable(ipl);
+
+					DPrintF("VirtioBlk_CheckPort: wait for irq\n");
+					Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
+				}
+			}
+			else
+			{
+				Enable(ipl);
+				break;
+			}
+		}
+		else
+		{
+			Enable(ipl);
+			break;
+		}
+	}
+
 	return;
 }
 
@@ -113,7 +215,11 @@ int VirtioBlk_alloc_phys_requests(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
 	return 1;
 }
 
-
+int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
+{
+	DPrintF("Disk present\n");
+	return VBF_DISK_IN;
+}
 
 int VirtioBlk_configuration(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
 {
@@ -154,6 +260,10 @@ int VirtioBlk_configuration(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
 
 void VirtioBlk_transfer(VirtioBlkBase *VirtioBlkBase, VirtioBlk* vb, UINT32 sector_start, UINT32 num_sectors, UINT8 write, UINT8* buf)
 {
+	DPrintF("VirtioBlk_transfer: sector_start = %d\n", sector_start);
+	DPrintF("VirtioBlk_transfer: num_sectors = %d\n", num_sectors);
+	DPrintF("VirtioBlk_transfer: write = %d\n", write);
+
 	struct LibVirtioBase* LibVirtioBase = VirtioBlkBase->LibVirtioBase;
 	VirtioDevice* vd = &(vb->vd);
 

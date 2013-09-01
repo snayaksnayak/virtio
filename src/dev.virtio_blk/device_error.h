@@ -12,6 +12,6 @@
 #define	BLK_ERR_BadUnitNum			(-27)	// asked for a unit >= available number of units
 #define	BLK_ERR_BadDriveType		(-28)	// not a drive that block device handles
 #define	BLK_ERR_DriveInUse			(-29)	// someone else is using the drive
-
+#define	BLK_ERR_DiskChanged			(-30)	// disk changed
 
 #endif //device_error_h

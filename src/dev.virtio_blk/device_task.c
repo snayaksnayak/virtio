@@ -77,20 +77,10 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 			if(TEST_BITS(curr_req->io_Flags, IOF_QUEUED))
 			{
 				CLEAR_BITS(curr_req->io_Flags, IOF_QUEUED);
-				SET_BITS(curr_req->io_Flags, IOF_SERVICING);
+				SET_BITS(curr_req->io_Flags, IOF_CURRENT);
+				Enable(ipl);
 				//start processing another request
-				VirtioBlk_process_request(VirtioBlkBase, curr_req);
-				Enable(ipl);
-				DPrintF("VirtioBlk_CheckPort: wait for irq\n");
-				Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
-			}
-			else if(TEST_BITS(curr_req->io_Flags, IOF_DONE))
-			{
-				DPrintF("One request complete\n");
-				Remove((struct Node *)curr_req);
-				curr_req->io_Error = 0;
-				Enable(ipl);
-				ReplyMsg((struct Message *)curr_req);
+				VirtioBlk_process_request(VirtioBlkBase, unit_num);
 			}
 			else
 			{
