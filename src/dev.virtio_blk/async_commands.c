@@ -35,6 +35,9 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 
+	//set till-now-number-of-bytes-read is zero.
+	ioreq->io_Actual = 0;
+
 	UINT32 track_offset = ioreq->io_Offset / (vb->Info.geometry.sectors + 1); // divide by 64 (1 track = 64 sectors)
 	UINT32 sector_offset = ioreq->io_Offset % (vb->Info.geometry.sectors + 1);
 	UINT32 sectors_to_copy = ioreq->io_Length / (vb->Info.blk_size); // divide by 512
@@ -71,7 +74,6 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	}
 	else
 	{
-		ioreq->io_Actual = 0;
 		// Ok, we add this to the list
 		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
