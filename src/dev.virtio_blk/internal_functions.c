@@ -73,71 +73,220 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 
 				DPrintF("VirtioBlk_process_request: vbu->TrackNum = %d\n", vbu->TrackNum);
 
-				if((track_offset == vbu->TrackNum) && (vbu->CacheFlag != VBF_INVALID))
+				if(curr_req->io_Command == CMD_READ)
 				{
-					if(remain <= (vbu->vb.Info.geometry.sectors + 1) - (sector_offset))
+					//work on current track present in cache
+					if((track_offset == vbu->TrackNum) && (vbu->CacheFlag != VBF_INVALID))
 					{
-						DPrintF("VirtioBlk_process_request: lengh within track size\n");
-						memcpy(curr_req->io_Data + curr_req->io_Actual, vbu->TrackCache , remain * (vbu->vb.Info.blk_size));
-						curr_req->io_Actual += remain * (vbu->vb.Info.blk_size);
-						remain = 0;
-					}
-					else
-					{
-						DPrintF("VirtioBlk_process_request: lengh outside track size\n");
-						memcpy(curr_req->io_Data + curr_req->io_Actual, vbu->TrackCache , ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size));
-						curr_req->io_Actual += ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size);
-						remain = remain - ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset));
-						DPrintF("VirtioBlk_process_request: curr_req->io_Actual = %d\n", curr_req->io_Actual);
-						DPrintF("VirtioBlk_process_request: remain = %d\n", remain);
-					}
+						if(remain <= (vbu->vb.Info.geometry.sectors + 1) - (sector_offset))
+						{
 
-					if(remain == 0)
-					{
-						DPrintF("VirtioBlk_process_request: One request complete\n");
-						Remove((struct Node *)curr_req);
-						CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
-						SET_BITS(curr_req->io_Flags, IOF_DONE);
-						curr_req->io_Error = 0;
-						Enable(ipl);
+								DPrintF("VirtioBlk_process_request: lengh within track size\n");
+								memcpy(curr_req->io_Data + curr_req->io_Actual, vbu->TrackCache , remain * (vbu->vb.Info.blk_size));
+								curr_req->io_Actual += remain * (vbu->vb.Info.blk_size);
+								remain = 0;
 
-						ReplyMsg((struct Message *)curr_req);
-						break;
+								DPrintF("VirtioBlk_process_request: One request complete\n");
+								Remove((struct Node *)curr_req);
+								CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
+								SET_BITS(curr_req->io_Flags, IOF_DONE);
+								curr_req->io_Error = 0;
+								Enable(ipl);
+
+								ReplyMsg((struct Message *)curr_req);
+								break;
+
+						}
+						else
+						{
+
+								DPrintF("VirtioBlk_process_request: lengh outside track size\n");
+								memcpy(curr_req->io_Data + curr_req->io_Actual, vbu->TrackCache , ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size));
+								curr_req->io_Actual += ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size);
+								remain = remain - ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset));
+								DPrintF("VirtioBlk_process_request: curr_req->io_Actual = %d\n", curr_req->io_Actual);
+								DPrintF("VirtioBlk_process_request: remain = %d\n", remain);
+
+								track_offset++;
+								sector_offset=0;
+
+								curr_req->io_Offset = track_offset * (vbu->vb.Info.geometry.sectors + 1);
+								curr_req->io_Length = remain * (vbu->vb.Info.blk_size);
+								DPrintF("VirtioBlk_process_request: track_offset++ = %d\n", track_offset);
+								DPrintF("VirtioBlk_process_request: curr_req->io_Offset = %d\n", curr_req->io_Offset);
+								DPrintF("VirtioBlk_process_request: curr_req->io_Length = %d\n", curr_req->io_Length);
+								Enable(ipl);
+						}
+
+
 					}
-					else
+					else //work on another track from disk
 					{
-						track_offset++;
-						sector_offset=0;
+							//if current cache is dirty
+							//write back to disk
+							if(vbu->CacheFlag == VBF_DIRTY)
+							{
+								UINT8 write;
+								write=1;
+								UINT8 *buf = (UINT8 *)vbu->TrackCache;
 
-						curr_req->io_Offset = track_offset * (vbu->vb.Info.geometry.sectors + 1);
-						curr_req->io_Length = remain * (vbu->vb.Info.blk_size);
-						DPrintF("VirtioBlk_process_request: track_offset++ = %d\n", track_offset);
-						DPrintF("VirtioBlk_process_request: curr_req->io_Offset = %d\n", curr_req->io_Offset);
-						DPrintF("VirtioBlk_process_request: curr_req->io_Length = %d\n", curr_req->io_Length);
-						Enable(ipl);
+								vbu->CacheFlag = VBF_CLEAN;
+
+								VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), vbu->TrackNum * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), write, buf);
+								Enable(ipl);
+
+								DPrintF("VirtioBlk_CheckPort: wait for irq\n");
+								Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
+							}
+
+							//read a new track
+							ipl = Disable();
+
+							UINT8 write;
+							write=0;
+							UINT8 *buf = (UINT8 *)vbu->TrackCache;
+
+							vbu->TrackNum = track_offset;
+							vbu->CacheFlag = VBF_CLEAN;
+
+							VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), track_offset * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), write, buf);
+							Enable(ipl);
+
+							DPrintF("VirtioBlk_CheckPort: wait for irq\n");
+							Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 					}
 				}
-				else
+				else if (curr_req->io_Command == CMD_WRITE)
 				{
-					UINT8 write;
-					if(curr_req->io_Command == CMD_WRITE)
+					//work on current track present in cache
+					if((track_offset == vbu->TrackNum) && (vbu->CacheFlag != VBF_INVALID))
 					{
-						write=1;
+						if(remain <= (vbu->vb.Info.geometry.sectors + 1) - (sector_offset))
+						{
+
+								DPrintF("VirtioBlk_process_request: lengh within track size\n");
+								memcpy(vbu->TrackCache, curr_req->io_Data + curr_req->io_Actual, remain * (vbu->vb.Info.blk_size));
+								vbu->CacheFlag = VBF_DIRTY;
+								curr_req->io_Actual += remain * (vbu->vb.Info.blk_size);
+								remain = 0;
+
+								DPrintF("VirtioBlk_process_request: One request complete\n");
+								Remove((struct Node *)curr_req);
+								CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
+								SET_BITS(curr_req->io_Flags, IOF_DONE);
+								curr_req->io_Error = 0;
+								Enable(ipl);
+
+								ReplyMsg((struct Message *)curr_req);
+								break;
+
+						}
+						else
+						{
+
+								DPrintF("VirtioBlk_process_request: lengh outside track size\n");
+								memcpy(vbu->TrackCache, curr_req->io_Data + curr_req->io_Actual, ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size));
+								vbu->CacheFlag = VBF_DIRTY;
+								curr_req->io_Actual += ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset)) * (vbu->vb.Info.blk_size);
+								remain = remain - ((vbu->vb.Info.geometry.sectors + 1) - (sector_offset));
+								DPrintF("VirtioBlk_process_request: curr_req->io_Actual = %d\n", curr_req->io_Actual);
+								DPrintF("VirtioBlk_process_request: remain = %d\n", remain);
+
+								track_offset++;
+								sector_offset=0;
+
+								curr_req->io_Offset = track_offset * (vbu->vb.Info.geometry.sectors + 1);
+								curr_req->io_Length = remain * (vbu->vb.Info.blk_size);
+								DPrintF("VirtioBlk_process_request: track_offset++ = %d\n", track_offset);
+								DPrintF("VirtioBlk_process_request: curr_req->io_Offset = %d\n", curr_req->io_Offset);
+								DPrintF("VirtioBlk_process_request: curr_req->io_Length = %d\n", curr_req->io_Length);
+								Enable(ipl);
+						}
 					}
-					else if(curr_req->io_Command == CMD_READ)
+					else //work on another track from disk
 					{
-						write=0;
+							//if current cache is dirty
+							//write back to disk
+							if(vbu->CacheFlag == VBF_DIRTY)
+							{
+								UINT8 write;
+								write=1;
+								UINT8 *buf = (UINT8 *)vbu->TrackCache;
+
+								vbu->CacheFlag = VBF_CLEAN;
+
+								VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), vbu->TrackNum * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), write, buf);
+								Enable(ipl);
+
+								DPrintF("VirtioBlk_CheckPort: wait for irq\n");
+								Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
+							}
+
+							ipl = Disable();
+							if(sector_offset == 0 && remain >= (vbu->vb.Info.geometry.sectors + 1))
+							{
+								//write
+								memcpy(vbu->TrackCache, curr_req->io_Data + curr_req->io_Actual, (vbu->vb.Info.geometry.sectors + 1) * (vbu->vb.Info.blk_size));
+								//update tracknum
+								vbu->TrackNum = track_offset;
+								//make dirty
+								vbu->CacheFlag = VBF_DIRTY;
+
+								curr_req->io_Actual += (vbu->vb.Info.geometry.sectors + 1) * (vbu->vb.Info.blk_size);
+
+								if(remain == (vbu->vb.Info.geometry.sectors + 1))
+								{
+									//r=0
+									//reply
+									remain = 0;
+
+									DPrintF("VirtioBlk_process_request: One request complete\n");
+									Remove((struct Node *)curr_req);
+									CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
+									SET_BITS(curr_req->io_Flags, IOF_DONE);
+									curr_req->io_Error = 0;
+									Enable(ipl);
+
+									ReplyMsg((struct Message *)curr_req);
+									break;
+								}
+								else
+								{
+									//r-=64
+									//track++
+									remain = remain - (vbu->vb.Info.geometry.sectors + 1);
+									DPrintF("VirtioBlk_process_request: curr_req->io_Actual = %d\n", curr_req->io_Actual);
+									DPrintF("VirtioBlk_process_request: remain = %d\n", remain);
+
+									track_offset++;
+									sector_offset=0;
+
+									curr_req->io_Offset = track_offset * (vbu->vb.Info.geometry.sectors + 1);
+									curr_req->io_Length = remain * (vbu->vb.Info.blk_size);
+									DPrintF("VirtioBlk_process_request: track_offset++ = %d\n", track_offset);
+									DPrintF("VirtioBlk_process_request: curr_req->io_Offset = %d\n", curr_req->io_Offset);
+									DPrintF("VirtioBlk_process_request: curr_req->io_Length = %d\n", curr_req->io_Length);
+									Enable(ipl);
+								}
+							}
+							else
+							{
+								//read a new track
+
+								UINT8 write;
+								write=0;
+								UINT8 *buf = (UINT8 *)vbu->TrackCache;
+
+								vbu->TrackNum = track_offset;
+								vbu->CacheFlag = VBF_CLEAN;
+
+								VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), track_offset * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), write, buf);
+								Enable(ipl);
+
+								DPrintF("VirtioBlk_CheckPort: wait for irq\n");
+								Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
+							}
 					}
-					UINT8 *buf = (UINT8 *)vbu->TrackCache;
-
-					vbu->TrackNum = track_offset;
-					vbu->CacheFlag = VBF_CLEAN;
-
-					VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), track_offset * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), write, buf);
-					Enable(ipl);
-
-					DPrintF("VirtioBlk_CheckPort: wait for irq\n");
-					Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 				}
 			}
 			else

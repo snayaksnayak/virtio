@@ -40,18 +40,18 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 
 	UINT32 track_offset = ioreq->io_Offset / (vb->Info.geometry.sectors + 1); // divide by 64 (1 track = 64 sectors)
 	UINT32 sector_offset = ioreq->io_Offset % (vb->Info.geometry.sectors + 1);
-	UINT32 sectors_to_copy = ioreq->io_Length / (vb->Info.blk_size); // divide by 512
+	UINT32 sectors_to_read = ioreq->io_Length / (vb->Info.blk_size); // divide by 512
 
 	DPrintF("VirtioBlkRead: track_offset = %d\n", track_offset);
 	DPrintF("VirtioBlkRead: sector_offset = %d\n", sector_offset);
-	DPrintF("VirtioBlkRead: sectors_to_copy = %d\n", sectors_to_copy);
+	DPrintF("VirtioBlkRead: sectors_to_read = %d\n", sectors_to_read);
 	DPrintF("VirtioBlkRead: (vb->Info.geometry.sectors + 1) = %d\n", (vb->Info.geometry.sectors + 1));
 	DPrintF("VirtioBlkRead: (vb->Info.blk_size) = %d\n", (vb->Info.blk_size));
 
 	UINT32 ipl;
 	ipl = Disable();
 	if((ioreq->io_Offset +
-	sectors_to_copy - 1)
+	sectors_to_read - 1)
 	>=
 	(vb->Info.geometry.cylinders *
 	vb->Info.geometry.heads *
@@ -63,12 +63,12 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
 	}
-	else if((vbu->CacheFlag == VBF_CLEAN)
+	else if((vbu->CacheFlag != VBF_INVALID)
 	&& (track_offset == vbu->TrackNum)
-	&& (sectors_to_copy <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
+	&& (sectors_to_read <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
 	{
-		memcpy(ioreq->io_Data + ioreq->io_Actual, vbu->TrackCache , sectors_to_copy * (vb->Info.blk_size));
-		ioreq->io_Actual = sectors_to_copy * (vb->Info.blk_size);
+		memcpy(ioreq->io_Data + ioreq->io_Actual, vbu->TrackCache , sectors_to_read * (vb->Info.blk_size));
+		ioreq->io_Actual = sectors_to_read * (vb->Info.blk_size);
 		DPrintF("VirtioBlkRead: quick service, ioreq->io_Actual = %d\n", ioreq->io_Actual);
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
 	}
@@ -89,6 +89,21 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkWrite!\n");
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
+	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+
+	//set till-now-number-of-bytes-write is zero.
+	ioreq->io_Actual = 0;
+
+	UINT32 track_offset = ioreq->io_Offset / (vb->Info.geometry.sectors + 1); // divide by 64 (1 track = 64 sectors)
+	UINT32 sector_offset = ioreq->io_Offset % (vb->Info.geometry.sectors + 1);
+	UINT32 sectors_to_write = ioreq->io_Length / (vb->Info.blk_size); // divide by 512
+
+	DPrintF("VirtioBlkWrite: track_offset = %d\n", track_offset);
+	DPrintF("VirtioBlkWrite: sector_offset = %d\n", sector_offset);
+	DPrintF("VirtioBlkWrite: sectors_to_write = %d\n", sectors_to_write);
+	DPrintF("VirtioBlkWrite: (vb->Info.geometry.sectors + 1) = %d\n", (vb->Info.geometry.sectors + 1));
+	DPrintF("VirtioBlkWrite: (vb->Info.blk_size) = %d\n", (vb->Info.blk_size));
+
 	UINT32 ipl;
 	ipl = Disable();
 	if((ioreq->io_Offset +
@@ -100,11 +115,26 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_NotEnoughSectors);
 	}
+	else if(vbu->DiskPresence == VBF_NO_DISK)
+	{
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
+	}
+	else if((vbu->CacheFlag != VBF_INVALID)
+	&& (track_offset == vbu->TrackNum)
+	&& (sectors_to_write <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
+	{
+		memcpy(vbu->TrackCache, ioreq->io_Data + ioreq->io_Actual, sectors_to_write * (vb->Info.blk_size));
+		ioreq->io_Actual = sectors_to_write * (vb->Info.blk_size);
+		DPrintF("VirtioBlkWrite: quick service, ioreq->io_Actual = %d\n", ioreq->io_Actual);
+		vbu->CacheFlag = VBF_DIRTY;
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
+	}
 	else
 	{
 		// Ok, we add this to the list
 		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
+		DPrintF("VirtioBlkWrite: late service\n");
 	}
 
 	Enable(ipl);
