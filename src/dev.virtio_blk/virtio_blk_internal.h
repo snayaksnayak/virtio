@@ -49,6 +49,9 @@
 #define VIRTIO_BLK_T_IN		0
 #define VIRTIO_BLK_T_OUT	1
 
+#define VB_WRITE VIRTIO_BLK_T_OUT
+#define VB_READ VIRTIO_BLK_T_IN
+
 //how many ques we have
 #define VIRTIO_BLK_NUM_QUEUES 1
 

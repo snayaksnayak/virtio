@@ -1008,10 +1008,9 @@ void test_virtio_blk(APTR SysBase)
 	}
 
 	// lets try to read the device
-	UINT32 i;
 
 	//number of sectors to read/write at once
-	#define NUM_SECTORS 7
+	#define NUM_SECTORS 5
 
 	UINT8* buf = AllocVec(512*NUM_SECTORS, MEMF_PUBLIC);
 	if (buf == NULL)
@@ -1019,18 +1018,22 @@ void test_virtio_blk(APTR SysBase)
 		DPrintF("ERROR: No Buffer\n");
 	}
 
-	UINT32 j = NUM_SECTORS;
-	for(i = 0; i < 1024; i+=j) //8192 max
+	int j = NUM_SECTORS;
+	for(int i = 0; i < 64*5; i+=j) //8192 max
 	{
 		// lets try a to read or write some sectors from the device
-
-		io->io_Command = CMD_READ;
-		//io->io_Command = CMD_WRITE;
 
 		io->io_Offset = i;
 		io->io_Length = NUM_SECTORS*512;
 
+		//to READ sectors, enable below two lines
+		io->io_Command = CMD_READ;
 		memset(buf, 0, 512*NUM_SECTORS);
+
+		//to WRITE sectors, enable below two lines
+		//io->io_Command = CMD_WRITE;
+		//for(int c=0; c<j; c++){memset(buf+(512*c), (UINT8)(i+c), 512);}
+
 		io->io_Data = buf;
 
 		// post request to the virtio device in sync way
@@ -1041,11 +1044,7 @@ void test_virtio_blk(APTR SysBase)
 		for(int k=0; k<j; k++)
 		{
 			DPrintF("buf[512*%d+0]= %x\n", k, buf[512*k+0]);
-			DPrintF("buf[512*%d+1]= %x\n", k, buf[512*k+1]);
-			DPrintF("buf[512*%d+2]= %x\n", k, buf[512*k+2]);
-			DPrintF("buf[512*%d+3]= %x\n", k, buf[512*k+3]);
 		}
-
 	}
 
 	FreeVec(buf);

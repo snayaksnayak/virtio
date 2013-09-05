@@ -45,8 +45,6 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	DPrintF("VirtioBlkRead: track_offset = %d\n", track_offset);
 	DPrintF("VirtioBlkRead: sector_offset = %d\n", sector_offset);
 	DPrintF("VirtioBlkRead: sectors_to_read = %d\n", sectors_to_read);
-	DPrintF("VirtioBlkRead: (vb->Info.geometry.sectors + 1) = %d\n", (vb->Info.geometry.sectors + 1));
-	DPrintF("VirtioBlkRead: (vb->Info.blk_size) = %d\n", (vb->Info.blk_size));
 
 	UINT32 ipl;
 	ipl = Disable();
@@ -67,7 +65,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	&& (track_offset == vbu->TrackNum)
 	&& (sectors_to_read <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
 	{
-		memcpy(ioreq->io_Data + ioreq->io_Actual, vbu->TrackCache , sectors_to_read * (vb->Info.blk_size));
+		memcpy(ioreq->io_Data + ioreq->io_Actual, vbu->TrackCache + (sector_offset * (vb->Info.blk_size)), sectors_to_read * (vb->Info.blk_size));
 		ioreq->io_Actual = sectors_to_read * (vb->Info.blk_size);
 		DPrintF("VirtioBlkRead: quick service, ioreq->io_Actual = %d\n", ioreq->io_Actual);
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
@@ -101,8 +99,6 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	DPrintF("VirtioBlkWrite: track_offset = %d\n", track_offset);
 	DPrintF("VirtioBlkWrite: sector_offset = %d\n", sector_offset);
 	DPrintF("VirtioBlkWrite: sectors_to_write = %d\n", sectors_to_write);
-	DPrintF("VirtioBlkWrite: (vb->Info.geometry.sectors + 1) = %d\n", (vb->Info.geometry.sectors + 1));
-	DPrintF("VirtioBlkWrite: (vb->Info.blk_size) = %d\n", (vb->Info.blk_size));
 
 	UINT32 ipl;
 	ipl = Disable();
@@ -123,7 +119,8 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	&& (track_offset == vbu->TrackNum)
 	&& (sectors_to_write <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
 	{
-		memcpy(vbu->TrackCache, ioreq->io_Data + ioreq->io_Actual, sectors_to_write * (vb->Info.blk_size));
+		memcpy(vbu->TrackCache + (sector_offset * (vb->Info.blk_size)), ioreq->io_Data + ioreq->io_Actual, sectors_to_write * (vb->Info.blk_size));
+
 		ioreq->io_Actual = sectors_to_write * (vb->Info.blk_size);
 		DPrintF("VirtioBlkWrite: quick service, ioreq->io_Actual = %d\n", ioreq->io_Actual);
 		vbu->CacheFlag = VBF_DIRTY;
