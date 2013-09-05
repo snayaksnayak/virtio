@@ -103,7 +103,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	UINT32 ipl;
 	ipl = Disable();
 	if((ioreq->io_Offset +
-	ioreq->io_Length - 1)
+	sectors_to_write - 1)
 	>=
 	(vb->Info.geometry.cylinders *
 	vb->Info.geometry.heads *
