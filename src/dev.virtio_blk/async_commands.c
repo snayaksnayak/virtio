@@ -164,16 +164,30 @@ void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 
 void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	/*
-	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
-	DPrintF("Inside VirtioBlkGetDeviceInfo!\n");
-	UINT32 ipl = Disable();
-	*((struct VirtioBlkDeviceInfo*)(ioreq->io_Data)) = vb->Info;
-	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	DPrintF("Inside VirtioBlkUpdate!\n");
+	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+
+	UINT32 ipl;
+	ipl = Disable();
+	if(vbu->DiskPresence == VBF_NO_DISK)
+	{
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
+	}
+	else if(vbu->CacheFlag != VBF_DIRTY)
+	{
+		DPrintF("VirtioBlkUpdate: quick service\n");
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
+	}
+	else
+	{
+		// Ok, we add this to the list
+		VirtioBlk_queue_command(VirtioBlkBase, ioreq);
+		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
+		DPrintF("VirtioBlkUpdate: late service\n");
+	}
 
 	Enable(ipl);
 	return;
-	*/
 }
 
 void VirtioBlkGetDiskChangeCount(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
@@ -216,16 +230,7 @@ void VirtioBlkEject(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 
 void VirtioBlkFormat(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	/*
-	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
-	DPrintF("Inside VirtioBlkGetDeviceInfo!\n");
-	UINT32 ipl = Disable();
-	*((struct VirtioBlkDeviceInfo*)(ioreq->io_Data)) = vb->Info;
-	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
-
-	Enable(ipl);
-	return;
-	*/
+	//TODO: Right now there is no difference between WRITE and FORMAT
 }
 
 void (*VirtioBlkCmdVector[])(VirtioBlkBase *, struct IOStdReq * ) =
@@ -246,7 +251,8 @@ void (*VirtioBlkCmdVector[])(VirtioBlkBase *, struct IOStdReq * ) =
 	VirtioBlkGetDiskChangeCount,
 	VirtioBlkGetDiskPresenceStatus,
 	VirtioBlkEject,
-	VirtioBlkFormat
+	//TODO: Right now there is no difference between WRITE and FORMAT
+	VirtioBlkWrite //VirtioBlkFormat
 };
 
 

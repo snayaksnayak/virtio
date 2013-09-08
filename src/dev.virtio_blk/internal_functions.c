@@ -128,12 +128,12 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 						{
 							vbu->CacheFlag = VBF_CLEAN;
 
-							DPrintF("VirtioBlk_CheckPort: READ: write dirty cache to disk\n");
+							DPrintF("VirtioBlk_process_request: READ: write dirty cache to disk\n");
 							VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), vbu->TrackNum * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), VB_WRITE, (UINT8 *)vbu->TrackCache);
 
 							Enable(ipl);
 
-							DPrintF("VirtioBlk_CheckPort: READ: wait for track write irq\n");
+							DPrintF("VirtioBlk_process_request: READ: wait for track write irq\n");
 							Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 						}
 
@@ -143,12 +143,12 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 						vbu->TrackNum = track_offset;
 						vbu->CacheFlag = VBF_CLEAN;
 
-						DPrintF("VirtioBlk_CheckPort: READ: read a new track\n");
+						DPrintF("VirtioBlk_process_request: READ: read a new track\n");
 						VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), track_offset * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), VB_READ, (UINT8 *)vbu->TrackCache);
 
 						Enable(ipl);
 
-						DPrintF("VirtioBlk_CheckPort: READ: wait for track read irq\n");
+						DPrintF("VirtioBlk_process_request: READ: wait for track read irq\n");
 						Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 					}
 				}
@@ -213,12 +213,12 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 						{
 							vbu->CacheFlag = VBF_CLEAN;
 
-							DPrintF("VirtioBlk_CheckPort: WRITE: write dirty cache to disk\n");
+							DPrintF("VirtioBlk_process_request: WRITE: write dirty cache to disk\n");
 							VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), vbu->TrackNum * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), VB_WRITE, (UINT8 *)vbu->TrackCache);
 
 							Enable(ipl);
 
-							DPrintF("VirtioBlk_CheckPort: WRITE: wait for track write irq\n");
+							DPrintF("VirtioBlk_process_request: WRITE: wait for track write irq\n");
 							Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 						}
 
@@ -272,15 +272,32 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 							vbu->TrackNum = track_offset;
 							vbu->CacheFlag = VBF_CLEAN;
 
-							DPrintF("VirtioBlk_CheckPort: WRITE: read a new track\n");
+							DPrintF("VirtioBlk_process_request: WRITE: read a new track\n");
 							VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), track_offset * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), VB_READ, (UINT8 *)vbu->TrackCache);
 
 							Enable(ipl);
 
-							DPrintF("VirtioBlk_CheckPort: WRITE: wait for track read irq\n");
+							DPrintF("VirtioBlk_process_request: WRITE: wait for track read irq\n");
 							Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
-							DPrintF("VirtioBlk_CheckPort: WRITE: after wait for track read irq\n");
+							DPrintF("VirtioBlk_process_request: WRITE: after wait for track read irq\n");
 						}
+					}
+				}
+				else if (curr_req->io_Command == CMD_UPDATE)
+				{
+					//if current cache is dirty
+					//write back to disk
+					if(vbu->CacheFlag == VBF_DIRTY)
+					{
+						vbu->CacheFlag = VBF_CLEAN;
+
+						DPrintF("VirtioBlk_process_request: UPDATE: write dirty cache to disk\n");
+						VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), vbu->TrackNum * (vbu->vb.Info.geometry.sectors + 1), (vbu->vb.Info.geometry.sectors + 1), VB_WRITE, (UINT8 *)vbu->TrackCache);
+
+						Enable(ipl);
+
+						DPrintF("VirtioBlk_process_request: UPDATE: wait for track write irq\n");
+						Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 					}
 				}
 			}

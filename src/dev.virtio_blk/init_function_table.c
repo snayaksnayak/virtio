@@ -56,7 +56,8 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 
 	struct ExpansionBase *ExpansionBase = (struct ExpansionBase *)OpenLibrary("expansion.library", 0);
 	VirtioBlkBase->ExpansionBase = ExpansionBase;
-	if (VirtioBlkBase->ExpansionBase == NULL) {
+	if (VirtioBlkBase->ExpansionBase == NULL)
+	{
 		DPrintF("virtio_blk_InitDev: Cant open expansion.library\n");
 		return NULL;
 	}
@@ -64,7 +65,8 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 
 	struct LibVirtioBase *LibVirtioBase = (struct LibVirtioBase *)OpenLibrary("lib_virtio.library", 0);
 	VirtioBlkBase->LibVirtioBase = LibVirtioBase;
-	if (VirtioBlkBase->LibVirtioBase == NULL) {
+	if (VirtioBlkBase->LibVirtioBase == NULL)
+	{
 		DPrintF("virtio_blk_InitDev: Cant open lib_virtio.library\n");
 		return NULL;
 	}
