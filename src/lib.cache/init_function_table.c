@@ -22,7 +22,7 @@ APTR lib_cache_FuncTab[] =
 	(APTR) ((UINT32)-1)
 };
 
-struct LibCacheBase *lib_cache_InitLib(struct LibCacheBase *LibCacheBase, UINT32 *segList, struct SysBase *SysBase)
+struct LibCacheBase *lib_cache_InitLib(LibCacheBase *LibCacheBase, UINT32 *segList, SysBase *SysBase)
 {
 	LibCacheBase->SysBase = SysBase;
 
@@ -57,7 +57,7 @@ struct InitTable
 	APTR	InitFunction;
 } lib_cache_InitTab =
 {
-	sizeof(struct LibCacheBase),
+	sizeof(LibCacheBase),
 	lib_cache_FuncTab,
 	(APTR)&LibCacheLibData,
 	lib_cache_InitLib

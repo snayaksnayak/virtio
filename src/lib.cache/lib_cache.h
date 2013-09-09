@@ -14,11 +14,11 @@ typedef struct LibCacheBase
 
 
 //library functions
-void CacheConfigure();
-void CacheRead();
-void CacheWrite();
-void CacheDiscard();
-void CacheSync();
+void CacheConfigure(LibCacheBase *LibCacheBase);
+void CacheRead(LibCacheBase *LibCacheBase);
+void CacheWrite(LibCacheBase *LibCacheBase);
+void CacheDiscard(LibCacheBase *LibCacheBase);
+void CacheSync(LibCacheBase *LibCacheBase);
 
 
 //vectors

@@ -24,16 +24,16 @@ extern char LibCacheLibVer[];
 
 
 //functions
-struct LibCacheBase *lib_cache_OpenLib(struct LibCacheBase *LibCacheBase);
-APTR lib_cache_CloseLib(struct LibCacheBase *LibCacheBase);
-APTR lib_cache_ExpungeLib(struct LibCacheBase *LibCacheBase);
+struct LibCacheBase *lib_cache_OpenLib(LibCacheBase *LibCacheBase);
+APTR lib_cache_CloseLib(LibCacheBase *LibCacheBase);
+APTR lib_cache_ExpungeLib(LibCacheBase *LibCacheBase);
 APTR lib_cache_ExtFuncLib(void);
 
-void lib_cache_Configure();
-void lib_cache_Read();
-void lib_cache_Write();
-void lib_cache_Discard();
-void lib_cache_Sync();
+void lib_cache_Configure(LibCacheBase *LibCacheBase);
+void lib_cache_Read(LibCacheBase *LibCacheBase);
+void lib_cache_Write(LibCacheBase *LibCacheBase);
+void lib_cache_Discard(LibCacheBase *LibCacheBase);
+void lib_cache_Sync(LibCacheBase *LibCacheBase);
 
 
 //internals
