@@ -18,6 +18,8 @@ APTR lib_cache_FuncTab[] =
 	(void(*)) lib_cache_Write,
 	(void(*)) lib_cache_Discard,
 	(void(*)) lib_cache_Sync,
+	(void(*)) lib_cache_Hit,
+	(void(*)) lib_cache_Dirty,
 
 	(APTR) ((UINT32)-1)
 };
@@ -25,6 +27,10 @@ APTR lib_cache_FuncTab[] =
 struct LibCacheBase *lib_cache_InitLib(LibCacheBase *LibCacheBase, UINT32 *segList, SysBase *SysBase)
 {
 	LibCacheBase->SysBase = SysBase;
+
+	LibCacheBase->CacheBuffer = 0;
+	LibCacheBase->CacheFlag = CF_INVALID;
+	LibCacheBase->CacheNum = 0;
 
 	return LibCacheBase;
 }

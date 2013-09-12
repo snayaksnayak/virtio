@@ -3,7 +3,7 @@
 
 #define SysBase LibCacheBase->SysBase
 
-void LibCache_supports(LibCacheBase *LibCacheBase)
+void LibCache_internal_function(LibCacheBase *LibCacheBase)
 {
 
 }
