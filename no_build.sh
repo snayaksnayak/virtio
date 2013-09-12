@@ -22,7 +22,7 @@ losetup -d /dev/loop10
 #qemu-system-i386 -m 64 -vga vmware -serial stdio -hda ./harddisk.img -net nic,model=virtio
 
 #for qemu with virtio nic and virtio disk enabled
-#qemu-system-i386 -m 64 -vga vmware -serial stdio -hda ./harddisk.img -net nic,model=virtio -drive file=harddisk2.img,if=virtio
+qemu-system-i386 -m 64 -vga vmware -serial stdio -hda ./harddisk.img -net nic,model=virtio -drive file=harddisk2.img,if=virtio
 
 #for qemu with virtio nic and two virtio disk enabled
-qemu-system-i386 -m 64 -vga vmware -serial stdio -hda ./harddisk.img -net nic,model=virtio -drive file=harddisk2.img,if=virtio -drive file=harddisk3.img,if=virtio
+#qemu-system-i386 -m 64 -vga vmware -serial stdio -hda ./harddisk.img -net nic,model=virtio -drive file=harddisk2.img,if=virtio -drive file=harddisk3.img,if=virtio

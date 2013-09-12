@@ -6,6 +6,7 @@
 #include "io.h"
 #include "expansionbase.h"
 #include "lib_virtio.h"
+#include "lib_cache.h"
 
 
 #define VERSION  0
@@ -133,10 +134,12 @@ struct VirtioBlkUnit
 	UINT8 DiskPresence; //disk present in drive?
 	UINT32 DiskChangeCounter; //disk change counter
 
+/*
 	//for cache
 	APTR TrackCache; //holds data of one track
 	UINT32 CacheFlag; //maintains state of cache, dirty etc.
 	UINT32 TrackNum; //which track is on cache
+*/
 };
 
 typedef struct VirtioBlkBase
@@ -145,6 +148,7 @@ typedef struct VirtioBlkBase
 	APTR				VirtioBlk_SysBase;
 	ExpansionBase* ExpansionBase;
 	LibVirtioBase* LibVirtioBase;
+	LibCacheBase* LibCacheBase;
 
 	UINT32				VirtioBlkIRQ;
 	struct Interrupt	*VirtioBlkIntServer;
@@ -212,6 +216,9 @@ int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
 //irq handler
 __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, VirtioBlkBase *VirtioBlkBase, APTR SysBase);
 
+//callbacks
+void Read(VirtioBlkBase *VirtioBlkBase, UINT32 sector_start, UINT32 num_sectors, UINT8* buf);
+void Write(VirtioBlkBase *VirtioBlkBase, UINT32 sector_start, UINT32 num_sectors, UINT8* buf);
 #endif //virtio_blk_internal_h
 
 

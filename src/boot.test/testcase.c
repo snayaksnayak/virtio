@@ -1037,9 +1037,9 @@ void test_virtio_blk(APTR SysBase)
 		io->io_Data = buf;
 
 		// post request to the virtio device in sync way
-		DPrintF("We will read a sector from the device\n");
+		DPrintF("We will read/write a sector from the device\n");
 		DoIO((struct IORequest *) io );
-		DPrintF("Return after reading a sector from the device\n");
+		DPrintF("Return after reading/writing a sector from the device\n");
 
 		for(int k=0; k<j; k++)
 		{

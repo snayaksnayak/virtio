@@ -71,6 +71,29 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		return NULL;
 	}
 
+	//TODO: cache should really be one per unit
+	struct LibCacheBase *LibCacheBase = (struct LibCacheBase *)OpenLibrary("lib_cache.library", 0);
+	VirtioBlkBase->LibCacheBase = LibCacheBase;
+	if (VirtioBlkBase->LibCacheBase == NULL)
+	{
+		DPrintF("virtio_blk_InitDev: Cant open lib_cache.library\n");
+		return NULL;
+	}
+
+	struct LibCacheConfig Config;
+	Config.UserBase=VirtioBlkBase;
+	Config.BlockSize = 512;
+	Config.CacheNumBlocks = 64;
+	Config.SourceNumBlocks = 8192;
+	Config.ReadSourceCallback = Read;
+	Config.WriteSourceCallback = Write;
+
+	if(!CacheConfigure(&Config))
+	{
+		DPrintF("virtio_blk_InitDev: Cant configure lib_cache.library\n");
+		return NULL;
+	}
+
 
 	for(int unit_num = 0; unit_num < VB_UNIT_MAX ; unit_num++)
 	{
@@ -124,6 +147,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		VirtioWrite8(vd->io_addr, VIRTIO_DEV_STATUS_OFFSET, VIRTIO_STATUS_DRV_OK);
 
 		// start irq server after driver is ok
+		//TODO: irq server should really be one per unit
 		VirtioBlkBase->VirtioBlkIntServer = CreateIntServer(DevName, VIRTIO_BLK_INT_PRI, VirtioBlkIRQServer, VirtioBlkBase);
 		AddIntServer(vd->intLine, VirtioBlkBase->VirtioBlkIntServer);
 
@@ -131,6 +155,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		VirtioBlkBase->VirtioBlkUnit[unit_num].DiskPresence = VirtioBlk_getDiskPresence(VirtioBlkBase, vb);
 		VirtioBlkBase->VirtioBlkUnit[unit_num].DiskChangeCounter = 0;
 
+/*
 		VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache = AllocVec((vb->Info.geometry.sectors + 1) * vb->Info.blk_size, MEMF_FAST|MEMF_CLEAR);
 		if(VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache == NULL)
 		{
@@ -138,6 +163,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		}
 		VirtioBlkBase->VirtioBlkUnit[unit_num].CacheFlag = VBF_INVALID;
 		VirtioBlkBase->VirtioBlkUnit[unit_num].TrackNum = 0;
+*/
 
 		//start worker task
 		DPrintF("virtio_blk_InitDev: create a worker task and wait\n");
@@ -145,7 +171,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData = AllocVec(sizeof(struct VirtioBlkTaskData), MEMF_FAST|MEMF_CLEAR);
 		if(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData == NULL)
 		{
-			FreeVec(VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache);
+			//FreeVec(VirtioBlkBase->VirtioBlkUnit[unit_num].TrackCache);
 			break;
 		}
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData->VirtioBlkBase = VirtioBlkBase;

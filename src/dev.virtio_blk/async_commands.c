@@ -35,6 +35,8 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 
+	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+
 	//set till-now-number-of-bytes-read is zero.
 	ioreq->io_Actual = 0;
 
@@ -61,12 +63,9 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
 	}
-	else if((vbu->CacheFlag != VBF_INVALID)
-	&& (track_offset == vbu->TrackNum)
-	&& (sectors_to_read <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
+	else if(CacheHit(ioreq->io_Offset, ioreq->io_Length))
 	{
-		memcpy(ioreq->io_Data + ioreq->io_Actual, vbu->TrackCache + (sector_offset * (vb->Info.blk_size)), sectors_to_read * (vb->Info.blk_size));
-		ioreq->io_Actual = sectors_to_read * (vb->Info.blk_size);
+		ioreq->io_Actual = CacheRead(ioreq->io_Offset, ioreq->io_Length, ioreq->io_Data);
 		DPrintF("VirtioBlkRead: quick service, ioreq->io_Actual = %d\n", ioreq->io_Actual);
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
 	}
@@ -88,6 +87,8 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	DPrintF("Inside VirtioBlkWrite!\n");
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+
+	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
 
 	//set till-now-number-of-bytes-write is zero.
 	ioreq->io_Actual = 0;
@@ -115,15 +116,10 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
 	}
-	else if((vbu->CacheFlag != VBF_INVALID)
-	&& (track_offset == vbu->TrackNum)
-	&& (sectors_to_write <= ((vb->Info.geometry.sectors + 1)-(sector_offset))))
+	else if(CacheHit(ioreq->io_Offset, ioreq->io_Length))
 	{
-		memcpy(vbu->TrackCache + (sector_offset * (vb->Info.blk_size)), ioreq->io_Data + ioreq->io_Actual, sectors_to_write * (vb->Info.blk_size));
-
-		ioreq->io_Actual = sectors_to_write * (vb->Info.blk_size);
+		ioreq->io_Actual = CacheWrite(ioreq->io_Offset, ioreq->io_Length, ioreq->io_Data);
 		DPrintF("VirtioBlkWrite: quick service, ioreq->io_Actual = %d\n", ioreq->io_Actual);
-		vbu->CacheFlag = VBF_DIRTY;
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
 	}
 	else
@@ -152,10 +148,14 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 
 void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+//	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+
+
 	DPrintF("Inside VirtioBlkClear!\n");
 	UINT32 ipl = Disable();
-	vbu->CacheFlag = VBF_INVALID;
+
+	CacheDiscard();
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
 
 	Enable(ipl);
@@ -166,6 +166,8 @@ void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkUpdate!\n");
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+
 
 	UINT32 ipl;
 	ipl = Disable();
@@ -173,7 +175,7 @@ void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
 	}
-	else if(vbu->CacheFlag != VBF_DIRTY)
+	else if(!CacheDirty())
 	{
 		DPrintF("VirtioBlkUpdate: quick service\n");
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, 0 );
