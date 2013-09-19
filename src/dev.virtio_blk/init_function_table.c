@@ -3,7 +3,7 @@
 #include "resident.h"
 #include "exec_funcs.h"
 #include "expansion_funcs.h"
-#include "lib_virtio.h"
+#include "virtio.h"
 #include "arch_config.h"
 
 
@@ -63,24 +63,24 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 	}
 
 
-	struct LibVirtioBase *LibVirtioBase = (struct LibVirtioBase *)OpenLibrary("lib_virtio.library", 0);
-	VirtioBlkBase->LibVirtioBase = LibVirtioBase;
-	if (VirtioBlkBase->LibVirtioBase == NULL)
+	struct VirtioBase *VirtioBase = (struct VirtioBase *)OpenLibrary("virtio.library", 0);
+	VirtioBlkBase->VirtioBase = VirtioBase;
+	if (VirtioBlkBase->VirtioBase == NULL)
 	{
-		DPrintF("virtio_blk_InitDev: Cant open lib_virtio.library\n");
+		DPrintF("virtio_blk_InitDev: Cant open virtio.library\n");
 		return NULL;
 	}
 
 	//TODO: cache should really be one per unit
-	struct LibCacheBase *LibCacheBase = (struct LibCacheBase *)OpenLibrary("lib_cache.library", 0);
-	VirtioBlkBase->LibCacheBase = LibCacheBase;
-	if (VirtioBlkBase->LibCacheBase == NULL)
+	struct CacheBase *CacheBase = (struct CacheBase *)OpenLibrary("cache.library", 0);
+	VirtioBlkBase->CacheBase = CacheBase;
+	if (VirtioBlkBase->CacheBase == NULL)
 	{
-		DPrintF("virtio_blk_InitDev: Cant open lib_cache.library\n");
+		DPrintF("virtio_blk_InitDev: Cant open cache.library\n");
 		return NULL;
 	}
 
-	struct LibCacheConfig Config;
+	struct CacheConfig Config;
 	Config.UserBase=VirtioBlkBase;
 	Config.BlockSize = 512;
 	Config.CacheNumBlocks = 64;
@@ -90,7 +90,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 
 	if(!CacheConfigure(&Config))
 	{
-		DPrintF("virtio_blk_InitDev: Cant configure lib_cache.library\n");
+		DPrintF("virtio_blk_InitDev: Cant configure cache.library\n");
 		return NULL;
 	}
 

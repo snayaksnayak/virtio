@@ -5,8 +5,8 @@
 #include "device.h"
 #include "io.h"
 #include "expansionbase.h"
-#include "lib_virtio.h"
-#include "lib_cache.h"
+#include "virtio.h"
+#include "cache.h"
 
 
 #define VERSION  0
@@ -147,8 +147,8 @@ typedef struct VirtioBlkBase
 	struct Device		Device;
 	APTR				VirtioBlk_SysBase;
 	ExpansionBase* ExpansionBase;
-	LibVirtioBase* LibVirtioBase;
-	LibCacheBase* LibCacheBase;
+	VirtioBase* VirtioBase;
+	CacheBase* CacheBase;
 
 	UINT32				VirtioBlkIRQ;
 	struct Interrupt	*VirtioBlkIntServer;

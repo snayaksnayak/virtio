@@ -1,5 +1,5 @@
-#ifndef lib_virtio_h
-#define lib_virtio_h
+#ifndef virtio_h
+#define virtio_h
 
 // this file shall go to top most include folder in future
 
@@ -73,12 +73,12 @@ typedef struct VirtioDevice
 } VirtioDevice;
 
 
-typedef struct LibVirtioBase
+typedef struct VirtioBase
 {
 	struct Library		Library;
 	APTR				SysBase;
 
-} LibVirtioBase;
+} VirtioBase;
 
 
 //library functions
@@ -99,21 +99,21 @@ int VirtioGuestSupports(VirtioDevice *vd, int bit);
 
 
 //vectors
-#define VirtioWrite8(a,b,c) (((void(*)(APTR, UINT16, UINT16, UINT8)) 	_GETVECADDR(LibVirtioBase, 5))(LibVirtioBase, a, b, c))
-#define VirtioWrite16(a,b,c) (((void(*)(APTR, UINT16, UINT16, UINT16)) 	_GETVECADDR(LibVirtioBase, 6))(LibVirtioBase, a, b, c))
-#define VirtioWrite32(a,b,c) (((void(*)(APTR, UINT16, UINT16, UINT32)) 	_GETVECADDR(LibVirtioBase, 7))(LibVirtioBase, a, b, c))
-#define VirtioRead8(a,b) (((UINT8(*)(APTR, UINT16, UINT16)) 	_GETVECADDR(LibVirtioBase, 8))(LibVirtioBase, a, b))
-#define VirtioRead16(a,b) (((UINT16(*)(APTR, UINT16, UINT16)) 	_GETVECADDR(LibVirtioBase, 9))(LibVirtioBase, a, b))
-#define VirtioRead32(a,b) (((UINT32(*)(APTR, UINT16, UINT16)) 	_GETVECADDR(LibVirtioBase, 10))(LibVirtioBase, a, b))
+#define VirtioWrite8(a,b,c) (((void(*)(APTR, UINT16, UINT16, UINT8)) 	_GETVECADDR(VirtioBase, 5))(VirtioBase, a, b, c))
+#define VirtioWrite16(a,b,c) (((void(*)(APTR, UINT16, UINT16, UINT16)) 	_GETVECADDR(VirtioBase, 6))(VirtioBase, a, b, c))
+#define VirtioWrite32(a,b,c) (((void(*)(APTR, UINT16, UINT16, UINT32)) 	_GETVECADDR(VirtioBase, 7))(VirtioBase, a, b, c))
+#define VirtioRead8(a,b) (((UINT8(*)(APTR, UINT16, UINT16)) 	_GETVECADDR(VirtioBase, 8))(VirtioBase, a, b))
+#define VirtioRead16(a,b) (((UINT16(*)(APTR, UINT16, UINT16)) 	_GETVECADDR(VirtioBase, 9))(VirtioBase, a, b))
+#define VirtioRead32(a,b) (((UINT32(*)(APTR, UINT16, UINT16)) 	_GETVECADDR(VirtioBase, 10))(VirtioBase, a, b))
 
-#define VirtioExchangeFeatures(a) (((void(*)(APTR, VirtioDevice*)) 	_GETVECADDR(LibVirtioBase, 11))(LibVirtioBase, a))
-#define VirtioAllocateQueues(a,b) (((int(*)(APTR, VirtioDevice*, INT32)) 	_GETVECADDR(LibVirtioBase, 12))(LibVirtioBase, a, b))
-#define VirtioInitQueues(a) (((int(*)(APTR, VirtioDevice*)) 	_GETVECADDR(LibVirtioBase, 13))(LibVirtioBase, a))
-#define VirtioFreeQueues(a) (((void(*)(APTR, VirtioDevice*)) 	_GETVECADDR(LibVirtioBase, 14))(LibVirtioBase, a))
-#define VirtioHostSupports(a,b) (((int(*)(APTR, VirtioDevice*, int)) 	_GETVECADDR(LibVirtioBase, 15))(LibVirtioBase, a, b))
-#define VirtioGuestSupports(a,b) (((int(*)(APTR, VirtioDevice*, int)) 	_GETVECADDR(LibVirtioBase, 16))(LibVirtioBase, a, b))
-
-
+#define VirtioExchangeFeatures(a) (((void(*)(APTR, VirtioDevice*)) 	_GETVECADDR(VirtioBase, 11))(VirtioBase, a))
+#define VirtioAllocateQueues(a,b) (((int(*)(APTR, VirtioDevice*, INT32)) 	_GETVECADDR(VirtioBase, 12))(VirtioBase, a, b))
+#define VirtioInitQueues(a) (((int(*)(APTR, VirtioDevice*)) 	_GETVECADDR(VirtioBase, 13))(VirtioBase, a))
+#define VirtioFreeQueues(a) (((void(*)(APTR, VirtioDevice*)) 	_GETVECADDR(VirtioBase, 14))(VirtioBase, a))
+#define VirtioHostSupports(a,b) (((int(*)(APTR, VirtioDevice*, int)) 	_GETVECADDR(VirtioBase, 15))(VirtioBase, a, b))
+#define VirtioGuestSupports(a,b) (((int(*)(APTR, VirtioDevice*, int)) 	_GETVECADDR(VirtioBase, 16))(VirtioBase, a, b))
 
 
-#endif //lib_virtio_h
+
+
+#endif //virtio_h

@@ -6,7 +6,7 @@
 #include "types.h"
 #include "device.h"
 #include "io.h"
-#include "lib_virtio.h"
+#include "virtio.h"
 
 // Units
 #define VB_UNIT_MAX    4
@@ -107,7 +107,7 @@ typedef struct VirtioBlkBase
 	struct Device		Device;
 	APTR				VirtioBlk_SysBase;
 	ExpansionBase* ExpansionBase;
-	LibVirtioBase* LibVirtioBase;
+	VirtioBase* VirtioBase;
 
 	UINT32				VirtioBlkIRQ;
 	struct Interrupt	*VirtioBlkIntServer;

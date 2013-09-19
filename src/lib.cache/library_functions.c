@@ -1,28 +1,28 @@
 #include "exec_funcs.h"
-#include "lib_cache_internal.h"
+#include "cache_internal.h"
 
-#define SysBase LibCacheBase->SysBase
+#define SysBase CacheBase->SysBase
 
-struct LibCacheBase* lib_cache_OpenLib(LibCacheBase *LibCacheBase)
+struct CacheBase* cache_OpenLib(CacheBase *CacheBase)
 {
-    LibCacheBase->Library.lib_OpenCnt++;
+    CacheBase->Library.lib_OpenCnt++;
 
-	return(LibCacheBase);
+	return(CacheBase);
 }
 
-APTR lib_cache_CloseLib(LibCacheBase *LibCacheBase)
+APTR cache_CloseLib(CacheBase *CacheBase)
 {
-	LibCacheBase->Library.lib_OpenCnt--;
+	CacheBase->Library.lib_OpenCnt--;
 
-	return (LibCacheBase);
+	return (CacheBase);
 }
 
-APTR lib_cache_ExpungeLib(LibCacheBase *LibCacheBase)
+APTR cache_ExpungeLib(CacheBase *CacheBase)
 {
 	return (NULL);
 }
 
-APTR lib_cache_ExtFuncLib(void)
+APTR cache_ExtFuncLib(void)
 {
 	return (NULL);
 }
@@ -31,38 +31,38 @@ APTR lib_cache_ExtFuncLib(void)
 //**************
 
 
-BOOL lib_cache_Configure(LibCacheBase *LibCacheBase, struct LibCacheConfig* Config)
+BOOL cache_Configure(CacheBase *CacheBase, struct CacheConfig* Config)
 {
-	DPrintF("lib_cache_Configure: start\n");
+	DPrintF("cache_Configure: start\n");
 
-	LibCacheBase->CacheConfig.UserBase = Config->UserBase;
-	LibCacheBase->CacheConfig.BlockSize = Config->BlockSize;
-	LibCacheBase->CacheConfig.CacheNumBlocks = Config->CacheNumBlocks;
-	LibCacheBase->CacheConfig.SourceNumBlocks = Config->SourceNumBlocks;
-	LibCacheBase->CacheConfig.ReadSourceCallback = Config->ReadSourceCallback;
-	LibCacheBase->CacheConfig.WriteSourceCallback = Config->WriteSourceCallback;
+	CacheBase->CacheConfig.UserBase = Config->UserBase;
+	CacheBase->CacheConfig.BlockSize = Config->BlockSize;
+	CacheBase->CacheConfig.CacheNumBlocks = Config->CacheNumBlocks;
+	CacheBase->CacheConfig.SourceNumBlocks = Config->SourceNumBlocks;
+	CacheBase->CacheConfig.ReadSourceCallback = Config->ReadSourceCallback;
+	CacheBase->CacheConfig.WriteSourceCallback = Config->WriteSourceCallback;
 
-	LibCacheBase->CacheBuffer = AllocVec(LibCacheBase->CacheConfig.CacheNumBlocks * LibCacheBase->CacheConfig.BlockSize, MEMF_FAST|MEMF_CLEAR);
-	if(LibCacheBase->CacheBuffer == NULL)
+	CacheBase->CacheBuffer = AllocVec(CacheBase->CacheConfig.CacheNumBlocks * CacheBase->CacheConfig.BlockSize, MEMF_FAST|MEMF_CLEAR);
+	if(CacheBase->CacheBuffer == NULL)
 	{
 		return FALSE;
 	}
-	LibCacheBase->CacheFlag = CF_INVALID;
-	LibCacheBase->CacheNum = 0;
+	CacheBase->CacheFlag = CF_INVALID;
+	CacheBase->CacheNum = 0;
 
 	return TRUE;
 }
-BOOL lib_cache_Hit(LibCacheBase *LibCacheBase, UINT32 block_offset, UINT32 byte_length)
+BOOL cache_Hit(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length)
 {
-	DPrintF("lib_cache_Hit: start\n");
+	DPrintF("cache_Hit: start\n");
 
-	UINT32 track_offset = block_offset / LibCacheBase->CacheConfig.CacheNumBlocks;
-	UINT32 sector_offset = block_offset % LibCacheBase->CacheConfig.CacheNumBlocks;
-	UINT32 sectors_to_readwrite = byte_length / LibCacheBase->CacheConfig.BlockSize;
+	UINT32 track_offset = block_offset / CacheBase->CacheConfig.CacheNumBlocks;
+	UINT32 sector_offset = block_offset % CacheBase->CacheConfig.CacheNumBlocks;
+	UINT32 sectors_to_readwrite = byte_length / CacheBase->CacheConfig.BlockSize;
 
-	if((LibCacheBase->CacheFlag != CF_INVALID)
-	&& (track_offset == LibCacheBase->CacheNum)
-	&& (sectors_to_readwrite <= (LibCacheBase->CacheConfig.CacheNumBlocks -sector_offset)))
+	if((CacheBase->CacheFlag != CF_INVALID)
+	&& (track_offset == CacheBase->CacheNum)
+	&& (sectors_to_readwrite <= (CacheBase->CacheConfig.CacheNumBlocks -sector_offset)))
 	{
 		return TRUE;
 	}
@@ -71,148 +71,148 @@ BOOL lib_cache_Hit(LibCacheBase *LibCacheBase, UINT32 block_offset, UINT32 byte_
 		return FALSE;
 	}
 }
-UINT32 lib_cache_Read(LibCacheBase *LibCacheBase, UINT32 block_offset, UINT32 byte_length, UINT8* data_ptr)
+UINT32 cache_Read(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length, UINT8* data_ptr)
 {
 	UINT32 actual=0;
 	while(1)
 	{
-		UINT32 track_offset = block_offset / LibCacheBase->CacheConfig.CacheNumBlocks;
-		UINT32 sector_offset = block_offset % LibCacheBase->CacheConfig.CacheNumBlocks;
-		UINT32 remain_sectors = byte_length / LibCacheBase->CacheConfig.BlockSize;
+		UINT32 track_offset = block_offset / CacheBase->CacheConfig.CacheNumBlocks;
+		UINT32 sector_offset = block_offset % CacheBase->CacheConfig.CacheNumBlocks;
+		UINT32 remain_sectors = byte_length / CacheBase->CacheConfig.BlockSize;
 
-		DPrintF("lib_cache_Read: block_offset = %d\n", block_offset);
-		DPrintF("lib_cache_Read: byte_length = %d\n", byte_length);
+		DPrintF("cache_Read: block_offset = %d\n", block_offset);
+		DPrintF("cache_Read: byte_length = %d\n", byte_length);
 
 		//work on current track present in cache
-		if((track_offset == LibCacheBase->CacheNum) && (LibCacheBase->CacheFlag != CF_INVALID))
+		if((track_offset == CacheBase->CacheNum) && (CacheBase->CacheFlag != CF_INVALID))
 		{
-			if(remain_sectors <= (LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset))
+			if(remain_sectors <= (CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset))
 			{
 
-				DPrintF("lib_cache_Read: lengh within track size\n");
+				DPrintF("cache_Read: lengh within track size\n");
 				memcpy(data_ptr + actual,
-				LibCacheBase->CacheBuffer + (sector_offset * (LibCacheBase->CacheConfig.BlockSize)),
-				remain_sectors * (LibCacheBase->CacheConfig.BlockSize));
+				CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
+				remain_sectors * (CacheBase->CacheConfig.BlockSize));
 
-				actual += remain_sectors * (LibCacheBase->CacheConfig.BlockSize);
+				actual += remain_sectors * (CacheBase->CacheConfig.BlockSize);
 
 				remain_sectors = 0;
-				DPrintF("lib_cache_Read: One request complete\n");
+				DPrintF("cache_Read: One request complete\n");
 				break;
 			}
 			else
 			{
-				DPrintF("lib_cache_Read: lengh outside track size\n");
+				DPrintF("cache_Read: lengh outside track size\n");
 				memcpy(data_ptr + actual,
-				LibCacheBase->CacheBuffer + (sector_offset * (LibCacheBase->CacheConfig.BlockSize)),
-				((LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (LibCacheBase->CacheConfig.BlockSize));
+				CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
+				((CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (CacheBase->CacheConfig.BlockSize));
 
-				actual += ((LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (LibCacheBase->CacheConfig.BlockSize);
+				actual += ((CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (CacheBase->CacheConfig.BlockSize);
 
-				remain_sectors = remain_sectors - ((LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset));
+				remain_sectors = remain_sectors - ((CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset));
 
 				track_offset++;
 				sector_offset=0;
 
-				block_offset = track_offset * (LibCacheBase->CacheConfig.CacheNumBlocks);
+				block_offset = track_offset * (CacheBase->CacheConfig.CacheNumBlocks);
 
-				byte_length = remain_sectors * (LibCacheBase->CacheConfig.BlockSize);
+				byte_length = remain_sectors * (CacheBase->CacheConfig.BlockSize);
 
-				DPrintF("lib_cache_Read: actual = %d\n", actual);
-				DPrintF("lib_cache_Read: remain_sectors = %d\n", remain_sectors);
-				DPrintF("lib_cache_Read: block_offset = %d\n", block_offset);
-				DPrintF("lib_cache_Read: byte_length = %d\n", byte_length);
+				DPrintF("cache_Read: actual = %d\n", actual);
+				DPrintF("cache_Read: remain_sectors = %d\n", remain_sectors);
+				DPrintF("cache_Read: block_offset = %d\n", block_offset);
+				DPrintF("cache_Read: byte_length = %d\n", byte_length);
 			}
 		}
 		else //work on another track from disk
 		{
 			//if current cache is dirty
 			//write back to disk
-			if(LibCacheBase->CacheFlag == CF_DIRTY)
+			if(CacheBase->CacheFlag == CF_DIRTY)
 			{
-				LibCacheBase->CacheFlag = CF_CLEAN;
+				CacheBase->CacheFlag = CF_CLEAN;
 
-				DPrintF("lib_cache_Read: write dirty cache to disk; wait for callback to return\n");
+				DPrintF("cache_Read: write dirty cache to disk; wait for callback to return\n");
 
-				((void (*) (void*, UINT32, UINT32, void*))LibCacheBase->CacheConfig.WriteSourceCallback)
-				(LibCacheBase->CacheConfig.UserBase,
-				LibCacheBase->CacheNum * LibCacheBase->CacheConfig.CacheNumBlocks,
-				LibCacheBase->CacheConfig.CacheNumBlocks,
-				LibCacheBase->CacheBuffer);
+				((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.WriteSourceCallback)
+				(CacheBase->CacheConfig.UserBase,
+				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheBuffer);
 			}
 
 			//read a new track
 
-			LibCacheBase->CacheNum = track_offset;
-			LibCacheBase->CacheFlag = CF_CLEAN;
+			CacheBase->CacheNum = track_offset;
+			CacheBase->CacheFlag = CF_CLEAN;
 
-			DPrintF("lib_cache_Read: read cachefull data from disk; wait for callback to return\n");
+			DPrintF("cache_Read: read cachefull data from disk; wait for callback to return\n");
 
-			((void (*) (void*, UINT32, UINT32, void*))LibCacheBase->CacheConfig.ReadSourceCallback)
-			(LibCacheBase->CacheConfig.UserBase,
-			LibCacheBase->CacheNum * LibCacheBase->CacheConfig.CacheNumBlocks,
-			LibCacheBase->CacheConfig.CacheNumBlocks,
-			LibCacheBase->CacheBuffer);
+			((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.ReadSourceCallback)
+			(CacheBase->CacheConfig.UserBase,
+			CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+			CacheBase->CacheConfig.CacheNumBlocks,
+			CacheBase->CacheBuffer);
 		}
 	}
 
 	return actual;
 }
-UINT32 lib_cache_Write(LibCacheBase *LibCacheBase, UINT32 block_offset, UINT32 byte_length, UINT8* data_ptr)
+UINT32 cache_Write(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length, UINT8* data_ptr)
 {
 	UINT32 actual=0;
 	while(1)
 	{
 
-		UINT32 track_offset = block_offset / LibCacheBase->CacheConfig.CacheNumBlocks;
-		UINT32 sector_offset = block_offset % LibCacheBase->CacheConfig.CacheNumBlocks;
-		UINT32 remain_sectors = byte_length / LibCacheBase->CacheConfig.BlockSize;
+		UINT32 track_offset = block_offset / CacheBase->CacheConfig.CacheNumBlocks;
+		UINT32 sector_offset = block_offset % CacheBase->CacheConfig.CacheNumBlocks;
+		UINT32 remain_sectors = byte_length / CacheBase->CacheConfig.BlockSize;
 
-		DPrintF("lib_cache_Write: block_offset = %d\n", block_offset);
-		DPrintF("lib_cache_Write: byte_length = %d\n", byte_length);
+		DPrintF("cache_Write: block_offset = %d\n", block_offset);
+		DPrintF("cache_Write: byte_length = %d\n", byte_length);
 
 		//work on current track present in cache
-		if((track_offset == LibCacheBase->CacheNum) && (LibCacheBase->CacheFlag != CF_INVALID))
+		if((track_offset == CacheBase->CacheNum) && (CacheBase->CacheFlag != CF_INVALID))
 		{
-			if(remain_sectors <= (LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset))
+			if(remain_sectors <= (CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset))
 			{
-				DPrintF("lib_cache_Write: lengh within track size\n");
-				memcpy(LibCacheBase->CacheBuffer + (sector_offset * (LibCacheBase->CacheConfig.BlockSize)),
+				DPrintF("cache_Write: lengh within track size\n");
+				memcpy(CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
 				data_ptr + actual,
-				remain_sectors * (LibCacheBase->CacheConfig.BlockSize));
+				remain_sectors * (CacheBase->CacheConfig.BlockSize));
 
-				LibCacheBase->CacheFlag = CF_DIRTY;
+				CacheBase->CacheFlag = CF_DIRTY;
 
-				actual += remain_sectors * (LibCacheBase->CacheConfig.BlockSize);
+				actual += remain_sectors * (CacheBase->CacheConfig.BlockSize);
 
 				remain_sectors = 0;
-				DPrintF("lib_cache_Write: One request complete\n");
+				DPrintF("cache_Write: One request complete\n");
 				break;
 			}
 			else
 			{
-				DPrintF("lib_cache_Write: lengh outside track size\n");
-				memcpy(LibCacheBase->CacheBuffer + (sector_offset * (LibCacheBase->CacheConfig.BlockSize)),
+				DPrintF("cache_Write: lengh outside track size\n");
+				memcpy(CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
 				data_ptr + actual,
-				((LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (LibCacheBase->CacheConfig.BlockSize));
+				((CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (CacheBase->CacheConfig.BlockSize));
 
-				LibCacheBase->CacheFlag = CF_DIRTY;
+				CacheBase->CacheFlag = CF_DIRTY;
 
-				actual += ((LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (LibCacheBase->CacheConfig.BlockSize);
+				actual += ((CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset)) * (CacheBase->CacheConfig.BlockSize);
 
-				remain_sectors = remain_sectors - ((LibCacheBase->CacheConfig.CacheNumBlocks) - (sector_offset));
+				remain_sectors = remain_sectors - ((CacheBase->CacheConfig.CacheNumBlocks) - (sector_offset));
 
 				track_offset++;
 				sector_offset=0;
 
-				block_offset = track_offset * (LibCacheBase->CacheConfig.CacheNumBlocks);
+				block_offset = track_offset * (CacheBase->CacheConfig.CacheNumBlocks);
 
-				byte_length = remain_sectors * (LibCacheBase->CacheConfig.BlockSize);
+				byte_length = remain_sectors * (CacheBase->CacheConfig.BlockSize);
 
-				DPrintF("lib_cache_Write: actual = %d\n", actual);
-				DPrintF("lib_cache_Write: remain_sectors = %d\n", remain_sectors);
-				DPrintF("lib_cache_Write: block_offset = %d\n", block_offset);
-				DPrintF("lib_cache_Write: byte_length = %d\n", byte_length);
+				DPrintF("cache_Write: actual = %d\n", actual);
+				DPrintF("cache_Write: remain_sectors = %d\n", remain_sectors);
+				DPrintF("cache_Write: block_offset = %d\n", block_offset);
+				DPrintF("cache_Write: byte_length = %d\n", byte_length);
 
 			}
 		}
@@ -220,102 +220,102 @@ UINT32 lib_cache_Write(LibCacheBase *LibCacheBase, UINT32 block_offset, UINT32 b
 		{
 			//if current cache is dirty
 			//write back to disk
-			if(LibCacheBase->CacheFlag == CF_DIRTY)
+			if(CacheBase->CacheFlag == CF_DIRTY)
 			{
-				LibCacheBase->CacheFlag = CF_CLEAN;
+				CacheBase->CacheFlag = CF_CLEAN;
 
-				DPrintF("lib_cache_Write: write dirty cache to disk; wait for callback to return\n");
+				DPrintF("cache_Write: write dirty cache to disk; wait for callback to return\n");
 
-				((void (*) (void*, UINT32, UINT32, void*))LibCacheBase->CacheConfig.WriteSourceCallback)
-				(LibCacheBase->CacheConfig.UserBase,
-				LibCacheBase->CacheNum * LibCacheBase->CacheConfig.CacheNumBlocks,
-				LibCacheBase->CacheConfig.CacheNumBlocks,
-				LibCacheBase->CacheBuffer);
+				((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.WriteSourceCallback)
+				(CacheBase->CacheConfig.UserBase,
+				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheBuffer);
 			}
 
-			if(sector_offset == 0 && remain_sectors >= (LibCacheBase->CacheConfig.CacheNumBlocks))
+			if(sector_offset == 0 && remain_sectors >= (CacheBase->CacheConfig.CacheNumBlocks))
 			{
 				//write, update tracknum, make dirty
-				DPrintF("lib_cache_Write: Fill the whole cache, mark it dirty\n");
-				memcpy(LibCacheBase->CacheBuffer + (sector_offset * (LibCacheBase->CacheConfig.BlockSize)),
+				DPrintF("cache_Write: Fill the whole cache, mark it dirty\n");
+				memcpy(CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
 				data_ptr + actual,
-				(LibCacheBase->CacheConfig.CacheNumBlocks) * (LibCacheBase->CacheConfig.BlockSize));
+				(CacheBase->CacheConfig.CacheNumBlocks) * (CacheBase->CacheConfig.BlockSize));
 
-				LibCacheBase->CacheNum = track_offset;
-				LibCacheBase->CacheFlag = CF_DIRTY;
+				CacheBase->CacheNum = track_offset;
+				CacheBase->CacheFlag = CF_DIRTY;
 
-				actual += (LibCacheBase->CacheConfig.CacheNumBlocks) * (LibCacheBase->CacheConfig.BlockSize);
+				actual += (CacheBase->CacheConfig.CacheNumBlocks) * (CacheBase->CacheConfig.BlockSize);
 
-				if(remain_sectors == (LibCacheBase->CacheConfig.CacheNumBlocks))
+				if(remain_sectors == (CacheBase->CacheConfig.CacheNumBlocks))
 				{
 					remain_sectors = 0;
 
-					DPrintF("lib_cache_Write: One request complete\n");
+					DPrintF("cache_Write: One request complete\n");
 					break;
 				}
 				else
 				{
-					remain_sectors = remain_sectors - (LibCacheBase->CacheConfig.CacheNumBlocks);
+					remain_sectors = remain_sectors - (CacheBase->CacheConfig.CacheNumBlocks);
 
 					track_offset++;
 					sector_offset=0;
 
-					block_offset = track_offset * (LibCacheBase->CacheConfig.CacheNumBlocks);
+					block_offset = track_offset * (CacheBase->CacheConfig.CacheNumBlocks);
 
-					byte_length = remain_sectors * (LibCacheBase->CacheConfig.BlockSize);
+					byte_length = remain_sectors * (CacheBase->CacheConfig.BlockSize);
 
-					DPrintF("lib_cache_Write: actual = %d\n", actual);
-					DPrintF("lib_cache_Write: remain_sectors = %d\n", remain_sectors);
-					DPrintF("lib_cache_Write: block_offset = %d\n", block_offset);
-					DPrintF("lib_cache_Write: byte_length = %d\n", byte_length);
+					DPrintF("cache_Write: actual = %d\n", actual);
+					DPrintF("cache_Write: remain_sectors = %d\n", remain_sectors);
+					DPrintF("cache_Write: block_offset = %d\n", block_offset);
+					DPrintF("cache_Write: byte_length = %d\n", byte_length);
 				}
 			}
 			else
 			{
 				//read a new track
-				LibCacheBase->CacheNum = track_offset;
-				LibCacheBase->CacheFlag = CF_CLEAN;
+				CacheBase->CacheNum = track_offset;
+				CacheBase->CacheFlag = CF_CLEAN;
 
-				DPrintF("lib_cache_Write: read cachefull data from disk; wait for callback to return\n");
+				DPrintF("cache_Write: read cachefull data from disk; wait for callback to return\n");
 
-				((void (*) (void*, UINT32, UINT32, void*))LibCacheBase->CacheConfig.ReadSourceCallback)
-				(LibCacheBase->CacheConfig.UserBase,
-				LibCacheBase->CacheNum * LibCacheBase->CacheConfig.CacheNumBlocks,
-				LibCacheBase->CacheConfig.CacheNumBlocks,
-				LibCacheBase->CacheBuffer);
+				((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.ReadSourceCallback)
+				(CacheBase->CacheConfig.UserBase,
+				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheBuffer);
 			}
 		}
 	}
 
 	return actual;
 }
-void lib_cache_Discard(LibCacheBase *LibCacheBase)
+void cache_Discard(CacheBase *CacheBase)
 {
-	DPrintF("lib_cache_Discard: start\n");
-	LibCacheBase->CacheFlag = CF_INVALID;
+	DPrintF("cache_Discard: start\n");
+	CacheBase->CacheFlag = CF_INVALID;
 }
-void lib_cache_Sync(LibCacheBase *LibCacheBase)
+void cache_Sync(CacheBase *CacheBase)
 {
-	DPrintF("lib_cache_Sync: start\n");
+	DPrintF("cache_Sync: start\n");
 	//if current cache is dirty
 	//write back to disk
-	if(LibCacheBase->CacheFlag == CF_DIRTY)
+	if(CacheBase->CacheFlag == CF_DIRTY)
 	{
-		LibCacheBase->CacheFlag = CF_CLEAN;
+		CacheBase->CacheFlag = CF_CLEAN;
 
-		DPrintF("lib_cache_Sync: write dirty cache to disk; wait for callback to return\n");
+		DPrintF("cache_Sync: write dirty cache to disk; wait for callback to return\n");
 
-		((void (*) (void*, UINT32, UINT32, void*))LibCacheBase->CacheConfig.WriteSourceCallback)
-		(LibCacheBase->CacheConfig.UserBase,
-		LibCacheBase->CacheNum * LibCacheBase->CacheConfig.CacheNumBlocks,
-		LibCacheBase->CacheConfig.CacheNumBlocks,
-		LibCacheBase->CacheBuffer);
+		((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.WriteSourceCallback)
+		(CacheBase->CacheConfig.UserBase,
+		CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+		CacheBase->CacheConfig.CacheNumBlocks,
+		CacheBase->CacheBuffer);
 	}
 }
-BOOL lib_cache_Dirty(LibCacheBase *LibCacheBase)
+BOOL cache_Dirty(CacheBase *CacheBase)
 {
-	DPrintF("lib_cache_Dirty: start\n");
-	if(LibCacheBase->CacheFlag == CF_DIRTY)
+	DPrintF("cache_Dirty: start\n");
+	if(CacheBase->CacheFlag == CF_DIRTY)
 	{
 		return TRUE;
 	}

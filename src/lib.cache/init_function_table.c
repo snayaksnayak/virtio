@@ -1,43 +1,43 @@
-#include "lib_cache_internal.h"
+#include "cache_internal.h"
 #include "sysbase.h"
 #include "resident.h"
 #include "exec_funcs.h"
 
-char LibCacheLibName[] = "lib_cache.library";
-char LibCacheLibVer[] = "\0$VER: lib_cache.library 0.1 ("__DATE__")\r\n";
+char CacheName[] = "cache.library";
+char CacheVer[] = "\0$VER: cache.library 0.1 ("__DATE__")\r\n";
 
-APTR lib_cache_FuncTab[] =
+APTR cache_FuncTab[] =
 {
-	(void(*)) lib_cache_OpenLib,
-	(void(*)) lib_cache_CloseLib,
-	(void(*)) lib_cache_ExpungeLib,
-	(void(*)) lib_cache_ExtFuncLib,
+	(void(*)) cache_OpenLib,
+	(void(*)) cache_CloseLib,
+	(void(*)) cache_ExpungeLib,
+	(void(*)) cache_ExtFuncLib,
 
-	(void(*)) lib_cache_Configure,
-	(void(*)) lib_cache_Read,
-	(void(*)) lib_cache_Write,
-	(void(*)) lib_cache_Discard,
-	(void(*)) lib_cache_Sync,
-	(void(*)) lib_cache_Hit,
-	(void(*)) lib_cache_Dirty,
+	(void(*)) cache_Configure,
+	(void(*)) cache_Read,
+	(void(*)) cache_Write,
+	(void(*)) cache_Discard,
+	(void(*)) cache_Sync,
+	(void(*)) cache_Hit,
+	(void(*)) cache_Dirty,
 
 	(APTR) ((UINT32)-1)
 };
 
-struct LibCacheBase *lib_cache_InitLib(LibCacheBase *LibCacheBase, UINT32 *segList, SysBase *SysBase)
+struct CacheBase *cache_InitLib(CacheBase *CacheBase, UINT32 *segList, SysBase *SysBase)
 {
-	LibCacheBase->SysBase = SysBase;
+	CacheBase->SysBase = SysBase;
 
-	LibCacheBase->CacheBuffer = 0;
-	LibCacheBase->CacheFlag = CF_INVALID;
-	LibCacheBase->CacheNum = 0;
+	CacheBase->CacheBuffer = 0;
+	CacheBase->CacheFlag = CF_INVALID;
+	CacheBase->CacheNum = 0;
 
-	return LibCacheBase;
+	return CacheBase;
 }
 
-static const struct LibCacheBase LibCacheLibData =
+static const struct CacheBase CacheData =
 {
-	.Library.lib_Node.ln_Name = (APTR)&LibCacheLibName[0],
+	.Library.lib_Node.ln_Name = (APTR)&CacheName[0],
 	.Library.lib_Node.ln_Type = NT_LIBRARY,
 	.Library.lib_Node.ln_Pri = -50,
 
@@ -45,10 +45,10 @@ static const struct LibCacheBase LibCacheLibData =
 	.Library.lib_Flags = LIBF_SUMUSED|LIBF_CHANGED,
 	.Library.lib_NegSize = 0,
 	.Library.lib_PosSize = 0,
-	.Library.lib_Version = LIB_CACHE_VERSION,
-	.Library.lib_Revision = LIB_CACHE_REVISION,
+	.Library.lib_Version = CACHE_VERSION,
+	.Library.lib_Revision = CACHE_REVISION,
 	.Library.lib_Sum = 0,
-	.Library.lib_IDString = (APTR)&LibCacheLibVer[7],
+	.Library.lib_IDString = (APTR)&CacheVer[7],
 
 	//more (specific to library)
 
@@ -61,29 +61,29 @@ struct InitTable
 	APTR	FunctionTable;
 	APTR	DataTable;
 	APTR	InitFunction;
-} lib_cache_InitTab =
+} cache_InitTab =
 {
-	sizeof(LibCacheBase),
-	lib_cache_FuncTab,
-	(APTR)&LibCacheLibData,
-	lib_cache_InitLib
+	sizeof(CacheBase),
+	cache_FuncTab,
+	(APTR)&CacheData,
+	cache_InitLib
 };
 
-static APTR LibCacheEndResident;
+static APTR CacheEndResident;
 
 // Resident ROMTAG
-struct Resident LibCacheRomTag =
+struct Resident CacheRomTag =
 {
 	RTC_MATCHWORD,
-	&LibCacheRomTag,
-	&LibCacheEndResident,
+	&CacheRomTag,
+	&CacheEndResident,
 	RTF_AUTOINIT | RTF_SINGLETASK,
-	LIB_CACHE_VERSION,
+	CACHE_VERSION,
 	NT_LIBRARY,
 	-50,
-	LibCacheLibName,
-	LibCacheLibVer,
+	CacheName,
+	CacheVer,
 	0,
-	&lib_cache_InitTab
+	&cache_InitTab
 };
 

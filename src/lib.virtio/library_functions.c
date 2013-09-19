@@ -1,29 +1,29 @@
 #include "exec_funcs.h"
-#include "lib_virtio_internal.h"
+#include "virtio_internal.h"
 
 
-#define SysBase LibVirtioBase->SysBase
+#define SysBase VirtioBase->SysBase
 
-struct LibVirtioBase* lib_virtio_OpenLib(struct LibVirtioBase *LibVirtioBase)
+struct VirtioBase* virtio_OpenLib(struct VirtioBase *VirtioBase)
 {
-    LibVirtioBase->Library.lib_OpenCnt++;
+    VirtioBase->Library.lib_OpenCnt++;
 
-	return(LibVirtioBase);
+	return(VirtioBase);
 }
 
-APTR lib_virtio_CloseLib(struct LibVirtioBase *LibVirtioBase)
+APTR virtio_CloseLib(struct VirtioBase *VirtioBase)
 {
-	LibVirtioBase->Library.lib_OpenCnt--;
+	VirtioBase->Library.lib_OpenCnt--;
 
-	return (LibVirtioBase);
+	return (VirtioBase);
 }
 
-APTR lib_virtio_ExpungeLib(struct LibVirtioBase *LibVirtioBase)
+APTR virtio_ExpungeLib(struct VirtioBase *VirtioBase)
 {
 	return (NULL);
 }
 
-APTR lib_virtio_ExtFuncLib(void)
+APTR virtio_ExtFuncLib(void)
 {
 	return (NULL);
 }
@@ -32,28 +32,28 @@ APTR lib_virtio_ExtFuncLib(void)
 //**************
 
 
-void lib_virtio_Write8(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT16 offset, UINT8 val)
+void virtio_Write8(struct VirtioBase *VirtioBase, UINT16 base, UINT16 offset, UINT8 val)
 {
 	IO_Out8(base+offset, val);
 }
-void lib_virtio_Write16(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT16 offset, UINT16 val)
+void virtio_Write16(struct VirtioBase *VirtioBase, UINT16 base, UINT16 offset, UINT16 val)
 {
 	IO_Out16(base+offset, val);
 }
-void lib_virtio_Write32(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT16 offset, UINT32 val)
+void virtio_Write32(struct VirtioBase *VirtioBase, UINT16 base, UINT16 offset, UINT32 val)
 {
 	IO_Out32(base+offset, val);
 }
 
-UINT8 lib_virtio_Read8(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT16 offset)
+UINT8 virtio_Read8(struct VirtioBase *VirtioBase, UINT16 base, UINT16 offset)
 {
 	return IO_In8(base+offset);
 }
-UINT16 lib_virtio_Read16(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT16 offset)
+UINT16 virtio_Read16(struct VirtioBase *VirtioBase, UINT16 base, UINT16 offset)
 {
 	return IO_In16(base+offset);
 }
-UINT32 lib_virtio_Read32(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT16 offset)
+UINT32 virtio_Read32(struct VirtioBase *VirtioBase, UINT16 base, UINT16 offset)
 {
 	return IO_In32(base+offset);
 }
@@ -62,7 +62,7 @@ UINT32 lib_virtio_Read32(struct LibVirtioBase *LibVirtioBase, UINT16 base, UINT1
 //******************
 
 
-void lib_virtio_ExchangeFeatures(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
+void virtio_ExchangeFeatures(VirtioBase *VirtioBase, VirtioDevice *vd)
 {
 	UINT32 guest_features = 0, host_features = 0;
 	virtio_feature *f;
@@ -90,7 +90,7 @@ void lib_virtio_ExchangeFeatures(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
 
 //*************
 
-int lib_virtio_AllocateQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd, INT32 num_queues)
+int virtio_AllocateQueues(VirtioBase *VirtioBase, VirtioDevice *vd, INT32 num_queues)
 {
 	int r = 1;
 
@@ -119,7 +119,7 @@ int lib_virtio_AllocateQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd, IN
 }
 
 
-int lib_virtio_InitQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
+int virtio_InitQueues(VirtioBase *VirtioBase, VirtioDevice *vd)
 {
 	//Initialize all queues
 	int i, j, r;
@@ -139,7 +139,7 @@ int lib_virtio_InitQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
 			goto free;
 		}
 
-		r = LibVirtio_alloc_phys_queue(LibVirtioBase,q);
+		r = Virtio_alloc_phys_queue(VirtioBase,q);
 
 		if (r != 1)
 		{
@@ -147,7 +147,7 @@ int lib_virtio_InitQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
 			goto free;
 		}
 
-		LibVirtio_init_phys_queue(LibVirtioBase, q);
+		Virtio_init_phys_queue(VirtioBase, q);
 
 		//Let the host know about the guest physical page
 		VirtioWrite32(vd->io_addr, VIRTIO_QADDR_OFFSET, q->page);
@@ -158,7 +158,7 @@ int lib_virtio_InitQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
 free:
 	for (j = 0; j < i; j++)
 	{
-		LibVirtio_free_phys_queue(LibVirtioBase, &vd->queues[i]);
+		Virtio_free_phys_queue(VirtioBase, &vd->queues[i]);
 	}
 
 	return r;
@@ -166,12 +166,12 @@ free:
 
 
 
-void lib_virtio_FreeQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
+void virtio_FreeQueues(VirtioBase *VirtioBase, VirtioDevice *vd)
 {
 	int i;
 	for (i = 0; i < vd->num_queues; i++)
 	{
-		LibVirtio_free_phys_queue(LibVirtioBase, &vd->queues[i]);
+		Virtio_free_phys_queue(VirtioBase, &vd->queues[i]);
 	}
 
 	FreeVec(vd->queues);
@@ -179,14 +179,14 @@ void lib_virtio_FreeQueues(LibVirtioBase *LibVirtioBase, VirtioDevice *vd)
 }
 
 
-int lib_virtio_HostSupports(LibVirtioBase *LibVirtioBase, VirtioDevice *vd, int bit)
+int virtio_HostSupports(VirtioBase *VirtioBase, VirtioDevice *vd, int bit)
 {
-	return LibVirtio_supports(LibVirtioBase, vd, bit, 1);
+	return Virtio_supports(VirtioBase, vd, bit, 1);
 }
 
-int lib_virtio_GuestSupports(LibVirtioBase *LibVirtioBase, VirtioDevice *vd, int bit)
+int virtio_GuestSupports(VirtioBase *VirtioBase, VirtioDevice *vd, int bit)
 {
-	return LibVirtio_supports(LibVirtioBase, vd, bit, 0);
+	return Virtio_supports(VirtioBase, vd, bit, 0);
 }
 
 

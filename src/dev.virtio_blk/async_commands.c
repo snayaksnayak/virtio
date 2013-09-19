@@ -35,7 +35,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 
-	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
 
 	//set till-now-number-of-bytes-read is zero.
 	ioreq->io_Actual = 0;
@@ -88,7 +88,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 
-	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
 
 	//set till-now-number-of-bytes-write is zero.
 	ioreq->io_Actual = 0;
@@ -149,7 +149,7 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 //	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
-	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
 
 
 	DPrintF("Inside VirtioBlkClear!\n");
@@ -166,7 +166,7 @@ void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkUpdate!\n");
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
-	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
 
 
 	UINT32 ipl;

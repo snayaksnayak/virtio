@@ -1,9 +1,9 @@
 #include "exec_funcs.h"
-#include "lib_virtio_internal.h"
+#include "virtio_internal.h"
 
-#define SysBase LibVirtioBase->SysBase
+#define SysBase VirtioBase->SysBase
 
-int LibVirtio_supports(LibVirtioBase *LibVirtioBase, VirtioDevice *vd, int bit, int host)
+int Virtio_supports(VirtioBase *VirtioBase, VirtioDevice *vd, int bit, int host)
 {
 	for (int i = 0; i < vd->num_features; i++)
 	{
@@ -19,7 +19,7 @@ int LibVirtio_supports(LibVirtioBase *LibVirtioBase, VirtioDevice *vd, int bit, 
 //*******************
 
 
-int LibVirtio_alloc_phys_queue(LibVirtioBase *LibVirtioBase, struct virtio_queue *q)
+int Virtio_alloc_phys_queue(VirtioBase *VirtioBase, struct virtio_queue *q)
 {
 	/* How much memory do we need? */
 	q->ring_size = vring_size(q->num, 4096);
@@ -58,7 +58,7 @@ int LibVirtio_alloc_phys_queue(LibVirtioBase *LibVirtioBase, struct virtio_queue
 	return 1;
 }
 
-void LibVirtio_init_phys_queue(LibVirtioBase *LibVirtioBase, struct virtio_queue *q)
+void Virtio_init_phys_queue(VirtioBase *VirtioBase, struct virtio_queue *q)
 {
 	//not needed because of MEMF_CLEAR
 	memset(q->unaligned_addr, 0, q->ring_size);
@@ -77,7 +77,7 @@ void LibVirtio_init_phys_queue(LibVirtioBase *LibVirtioBase, struct virtio_queue
 	return;
 }
 
-void LibVirtio_free_phys_queue(LibVirtioBase *LibVirtioBase, struct virtio_queue *q)
+void Virtio_free_phys_queue(VirtioBase *VirtioBase, struct virtio_queue *q)
 {
 	FreeVec(q->unaligned_addr);
 	q->unaligned_addr = 0;

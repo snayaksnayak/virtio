@@ -1,46 +1,46 @@
-#include "lib_virtio_internal.h"
+#include "virtio_internal.h"
 #include "sysbase.h"
 #include "resident.h"
 #include "exec_funcs.h"
 
-char LibVirtioLibName[] = "lib_virtio.library";
-char LibVirtioLibVer[] = "\0$VER: lib_virtio.library 0.1 ("__DATE__")\r\n";
+char VirtioName[] = "virtio.library";
+char VirtioVer[] = "\0$VER: virtio.library 0.1 ("__DATE__")\r\n";
 
-APTR lib_virtio_FuncTab[] =
+APTR virtio_FuncTab[] =
 {
-	(void(*)) lib_virtio_OpenLib,
-	(void(*)) lib_virtio_CloseLib,
-	(void(*)) lib_virtio_ExpungeLib,
-	(void(*)) lib_virtio_ExtFuncLib,
+	(void(*)) virtio_OpenLib,
+	(void(*)) virtio_CloseLib,
+	(void(*)) virtio_ExpungeLib,
+	(void(*)) virtio_ExtFuncLib,
 
-	(void(*)) lib_virtio_Write8,
-	(void(*)) lib_virtio_Write16,
-	(void(*)) lib_virtio_Write32,
-	(void(*)) lib_virtio_Read8,
-	(void(*)) lib_virtio_Read16,
-	(void(*)) lib_virtio_Read32,
+	(void(*)) virtio_Write8,
+	(void(*)) virtio_Write16,
+	(void(*)) virtio_Write32,
+	(void(*)) virtio_Read8,
+	(void(*)) virtio_Read16,
+	(void(*)) virtio_Read32,
 
-	(void(*)) lib_virtio_ExchangeFeatures,
-	(void(*)) lib_virtio_AllocateQueues,
-	(void(*)) lib_virtio_InitQueues,
-	(void(*)) lib_virtio_FreeQueues,
-	(void(*)) lib_virtio_HostSupports,
-	(void(*)) lib_virtio_GuestSupports,
+	(void(*)) virtio_ExchangeFeatures,
+	(void(*)) virtio_AllocateQueues,
+	(void(*)) virtio_InitQueues,
+	(void(*)) virtio_FreeQueues,
+	(void(*)) virtio_HostSupports,
+	(void(*)) virtio_GuestSupports,
 
 	(APTR) ((UINT32)-1)
 };
 
-struct LibVirtioBase *lib_virtio_InitLib(struct LibVirtioBase *LibVirtioBase, UINT32 *segList, struct SysBase *SysBase)
+struct VirtioBase *virtio_InitLib(struct VirtioBase *VirtioBase, UINT32 *segList, struct SysBase *SysBase)
 {
-	LibVirtioBase->SysBase = SysBase;
+	VirtioBase->SysBase = SysBase;
 
 
-	return LibVirtioBase;
+	return VirtioBase;
 }
 
-static const struct LibVirtioBase LibVirtioLibData =
+static const struct VirtioBase VirtioData =
 {
-	.Library.lib_Node.ln_Name = (APTR)&LibVirtioLibName[0],
+	.Library.lib_Node.ln_Name = (APTR)&VirtioName[0],
 	.Library.lib_Node.ln_Type = NT_LIBRARY,
 	.Library.lib_Node.ln_Pri = -50,
 
@@ -48,10 +48,10 @@ static const struct LibVirtioBase LibVirtioLibData =
 	.Library.lib_Flags = LIBF_SUMUSED|LIBF_CHANGED,
 	.Library.lib_NegSize = 0,
 	.Library.lib_PosSize = 0,
-	.Library.lib_Version = LIB_VIRTIO_VERSION,
-	.Library.lib_Revision = LIB_VIRTIO_REVISION,
+	.Library.lib_Version = VIRTIO_VERSION,
+	.Library.lib_Revision = VIRTIO_REVISION,
 	.Library.lib_Sum = 0,
-	.Library.lib_IDString = (APTR)&LibVirtioLibVer[7],
+	.Library.lib_IDString = (APTR)&VirtioVer[7],
 
 	//more (specific to library)
 
@@ -64,29 +64,29 @@ struct InitTable
 	APTR	FunctionTable;
 	APTR	DataTable;
 	APTR	InitFunction;
-} lib_virtio_InitTab =
+} virtio_InitTab =
 {
-	sizeof(struct LibVirtioBase),
-	lib_virtio_FuncTab,
-	(APTR)&LibVirtioLibData,
-	lib_virtio_InitLib
+	sizeof(struct VirtioBase),
+	virtio_FuncTab,
+	(APTR)&VirtioData,
+	virtio_InitLib
 };
 
-static APTR LibVirtioEndResident;
+static APTR VirtioEndResident;
 
 // Resident ROMTAG
-struct Resident LibVirtioRomTag =
+struct Resident VirtioRomTag =
 {
 	RTC_MATCHWORD,
-	&LibVirtioRomTag,
-	&LibVirtioEndResident,
+	&VirtioRomTag,
+	&VirtioEndResident,
 	RTF_AUTOINIT | RTF_SINGLETASK,
-	LIB_VIRTIO_VERSION,
+	VIRTIO_VERSION,
 	NT_LIBRARY,
 	-50,
-	LibVirtioLibName,
-	LibVirtioLibVer,
+	VirtioName,
+	VirtioVer,
 	0,
-	&lib_virtio_InitTab
+	&virtio_InitTab
 };
 

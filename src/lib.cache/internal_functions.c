@@ -1,9 +1,9 @@
 #include "exec_funcs.h"
-#include "lib_cache_internal.h"
+#include "cache_internal.h"
 
-#define SysBase LibCacheBase->SysBase
+#define SysBase CacheBase->SysBase
 
-void LibCache_internal_function(LibCacheBase *LibCacheBase)
+void Cache_internal_function(CacheBase *CacheBase)
 {
 
 }

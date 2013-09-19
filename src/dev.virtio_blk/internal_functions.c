@@ -1,7 +1,7 @@
 #include "exec_funcs.h"
 #include "virtio_blk_internal.h"
 #include "expansion_funcs.h"
-#include "lib_virtio.h"
+#include "virtio.h"
 #include "arch_config.h"
 
 #define SysBase VirtioBlkBase->VirtioBlk_SysBase
@@ -37,7 +37,7 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 	unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
 	vbu = &(VirtioBlkBase->VirtioBlkUnit[unit_num]);
 
-	struct LibCacheBase *LibCacheBase = VirtioBlkBase->LibCacheBase;
+	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
 
 	while(1)
 	{
@@ -186,7 +186,7 @@ int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
 
 int VirtioBlk_configuration(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
 {
-	struct LibVirtioBase* LibVirtioBase = VirtioBlkBase->LibVirtioBase;
+	struct VirtioBase* VirtioBase = VirtioBlkBase->VirtioBase;
 	VirtioDevice* vd = &(vb->vd);
 
 	UINT32 sectors_low, sectors_high, size_mbs;
@@ -227,7 +227,7 @@ void VirtioBlk_transfer(VirtioBlkBase *VirtioBlkBase, VirtioBlk* vb, UINT32 sect
 	DPrintF("VirtioBlk_transfer: num_sectors = %d\n", num_sectors);
 	DPrintF("VirtioBlk_transfer: write = %d\n", write);
 
-	struct LibVirtioBase* LibVirtioBase = VirtioBlkBase->LibVirtioBase;
+	struct VirtioBase* VirtioBase = VirtioBlkBase->VirtioBase;
 	VirtioDevice* vd = &(vb->vd);
 
 	//prepare first out_hdr, since we have only one we are using 0,

@@ -5,7 +5,7 @@
 __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, VirtioBlkBase *VirtioBlkBase, APTR SysBase)
 {
 	DPrintF("VirtioBlkIRQServer\n");
-	struct LibVirtioBase *LibVirtioBase = VirtioBlkBase->LibVirtioBase;
+	struct VirtioBase *VirtioBase = VirtioBlkBase->VirtioBase;
 
 	VirtioBlk *vb;
 	VirtioDevice* vd;
