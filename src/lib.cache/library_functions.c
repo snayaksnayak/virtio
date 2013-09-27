@@ -122,6 +122,9 @@ UINT32 cache_Read(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length,
 				DPrintF("cache_Read: remain_sectors = %d\n", remain_sectors);
 				DPrintF("cache_Read: block_offset = %d\n", block_offset);
 				DPrintF("cache_Read: byte_length = %d\n", byte_length);
+
+				//rest things shall be processed,
+				//by iterating again and again in loop.
 			}
 		}
 		else //work on another track from disk
@@ -139,20 +142,47 @@ UINT32 cache_Read(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length,
 				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
 				CacheBase->CacheConfig.CacheNumBlocks,
 				CacheBase->CacheBuffer);
+
+				//rest things shall be processed,
+				//by iterating again and again in loop.
+
+				//Here goes a story:
+				//Generally these callbacks shall have
+				//a request to some hardware device
+				//and a wait, to allow sceduling
+				//of other tasks while hardware works.
+				//Now, if other tasks get scheduled in between,
+				//they may dirty the cache.
+				//So we will read a new track in next iteration,
+				//if we find the cache clean.
+				//Else, write to hardware will happen again.
+				//This allows serving other tasks from cache,
+				//when a big request is being served.
 			}
+			else
+			{
+				//read a new track
 
-			//read a new track
+				//While the content of cache is being updated,
+				//we don't want to serve other tasks,
+				//who gets rescheduled in between
+				//servicing period of a big request.
+				CacheBase->CacheNum = track_offset;
+				CacheBase->CacheFlag = CF_INVALID;
 
-			CacheBase->CacheNum = track_offset;
-			CacheBase->CacheFlag = CF_CLEAN;
+				DPrintF("cache_Read: read cachefull data from disk; wait for callback to return\n");
 
-			DPrintF("cache_Read: read cachefull data from disk; wait for callback to return\n");
+				((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.ReadSourceCallback)
+				(CacheBase->CacheConfig.UserBase,
+				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheConfig.CacheNumBlocks,
+				CacheBase->CacheBuffer);
 
-			((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.ReadSourceCallback)
-			(CacheBase->CacheConfig.UserBase,
-			CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
-			CacheBase->CacheConfig.CacheNumBlocks,
-			CacheBase->CacheBuffer);
+				CacheBase->CacheFlag = CF_CLEAN;
+
+				//rest things shall be processed,
+				//by iterating again and again in loop.
+			}
 		}
 	}
 
@@ -214,6 +244,8 @@ UINT32 cache_Write(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length
 				DPrintF("cache_Write: block_offset = %d\n", block_offset);
 				DPrintF("cache_Write: byte_length = %d\n", byte_length);
 
+				//rest things shall be processed,
+				//by iterating again and again in loop.
 			}
 		}
 		else //work on another track from disk
@@ -231,58 +263,71 @@ UINT32 cache_Write(CacheBase *CacheBase, UINT32 block_offset, UINT32 byte_length
 				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
 				CacheBase->CacheConfig.CacheNumBlocks,
 				CacheBase->CacheBuffer);
-			}
 
-			if(sector_offset == 0 && remain_sectors >= (CacheBase->CacheConfig.CacheNumBlocks))
-			{
-				//write, update tracknum, make dirty
-				DPrintF("cache_Write: Fill the whole cache, mark it dirty\n");
-				memcpy(CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
-				data_ptr + actual,
-				(CacheBase->CacheConfig.CacheNumBlocks) * (CacheBase->CacheConfig.BlockSize));
-
-				CacheBase->CacheNum = track_offset;
-				CacheBase->CacheFlag = CF_DIRTY;
-
-				actual += (CacheBase->CacheConfig.CacheNumBlocks) * (CacheBase->CacheConfig.BlockSize);
-
-				if(remain_sectors == (CacheBase->CacheConfig.CacheNumBlocks))
-				{
-					remain_sectors = 0;
-
-					DPrintF("cache_Write: One request complete\n");
-					break;
-				}
-				else
-				{
-					remain_sectors = remain_sectors - (CacheBase->CacheConfig.CacheNumBlocks);
-
-					track_offset++;
-					sector_offset=0;
-
-					block_offset = track_offset * (CacheBase->CacheConfig.CacheNumBlocks);
-
-					byte_length = remain_sectors * (CacheBase->CacheConfig.BlockSize);
-
-					DPrintF("cache_Write: actual = %d\n", actual);
-					DPrintF("cache_Write: remain_sectors = %d\n", remain_sectors);
-					DPrintF("cache_Write: block_offset = %d\n", block_offset);
-					DPrintF("cache_Write: byte_length = %d\n", byte_length);
-				}
+				//rest things shall be processed,
+				//by iterating again and again in loop.
 			}
 			else
 			{
-				//read a new track
-				CacheBase->CacheNum = track_offset;
-				CacheBase->CacheFlag = CF_CLEAN;
+				if(sector_offset == 0 && remain_sectors >= (CacheBase->CacheConfig.CacheNumBlocks))
+				{
+					//write, update tracknum, make dirty
+					DPrintF("cache_Write: Fill the whole cache, mark it dirty\n");
+					memcpy(CacheBase->CacheBuffer + (sector_offset * (CacheBase->CacheConfig.BlockSize)),
+					data_ptr + actual,
+					(CacheBase->CacheConfig.CacheNumBlocks) * (CacheBase->CacheConfig.BlockSize));
 
-				DPrintF("cache_Write: read cachefull data from disk; wait for callback to return\n");
+					CacheBase->CacheNum = track_offset;
+					CacheBase->CacheFlag = CF_DIRTY;
 
-				((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.ReadSourceCallback)
-				(CacheBase->CacheConfig.UserBase,
-				CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
-				CacheBase->CacheConfig.CacheNumBlocks,
-				CacheBase->CacheBuffer);
+					actual += (CacheBase->CacheConfig.CacheNumBlocks) * (CacheBase->CacheConfig.BlockSize);
+
+					if(remain_sectors == (CacheBase->CacheConfig.CacheNumBlocks))
+					{
+						remain_sectors = 0;
+
+						DPrintF("cache_Write: One request complete\n");
+						break;
+					}
+					else
+					{
+						remain_sectors = remain_sectors - (CacheBase->CacheConfig.CacheNumBlocks);
+
+						track_offset++;
+						sector_offset=0;
+
+						block_offset = track_offset * (CacheBase->CacheConfig.CacheNumBlocks);
+
+						byte_length = remain_sectors * (CacheBase->CacheConfig.BlockSize);
+
+						DPrintF("cache_Write: actual = %d\n", actual);
+						DPrintF("cache_Write: remain_sectors = %d\n", remain_sectors);
+						DPrintF("cache_Write: block_offset = %d\n", block_offset);
+						DPrintF("cache_Write: byte_length = %d\n", byte_length);
+
+						//rest things shall be processed,
+						//by iterating again and again in loop.
+					}
+				}
+				else
+				{
+					//read a new track
+					CacheBase->CacheNum = track_offset;
+					CacheBase->CacheFlag = CF_INVALID;
+
+					DPrintF("cache_Write: read cachefull data from disk; wait for callback to return\n");
+
+					((void (*) (void*, UINT32, UINT32, void*))CacheBase->CacheConfig.ReadSourceCallback)
+					(CacheBase->CacheConfig.UserBase,
+					CacheBase->CacheNum * CacheBase->CacheConfig.CacheNumBlocks,
+					CacheBase->CacheConfig.CacheNumBlocks,
+					CacheBase->CacheBuffer);
+
+					CacheBase->CacheFlag = CF_CLEAN;
+
+					//rest things shall be processed,
+					//by iterating again and again in loop.
+				}
 			}
 		}
 	}
