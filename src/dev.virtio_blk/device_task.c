@@ -77,12 +77,10 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 			{
 				CLEAR_BITS(curr_req->io_Flags, IOF_QUEUED);
 				SET_BITS(curr_req->io_Flags, IOF_CURRENT);
-				Permit();
 
 				//start processing another request
 				VirtioBlk_process_request(VirtioBlkBase, unit_num);
 
-				Forbid();
 				Remove((struct Node *)curr_req);
 				CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
 				SET_BITS(curr_req->io_Flags, IOF_DONE);
