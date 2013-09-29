@@ -127,6 +127,10 @@ struct VirtioBlkUnit
 {
 	struct Unit vb_unit;
 	struct VirtioBlk vb;
+
+	CacheBase* CacheBase;
+	struct Interrupt	*VirtioBlkIntServer;
+
 	Task				*VirtioBlk_WorkerTask;
 	struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData;
 	INT8 taskWakeupSignal;
@@ -134,12 +138,6 @@ struct VirtioBlkUnit
 	UINT8 DiskPresence; //disk present in drive?
 	UINT32 DiskChangeCounter; //disk change counter
 
-/*
-	//for cache
-	APTR TrackCache; //holds data of one track
-	UINT32 CacheFlag; //maintains state of cache, dirty etc.
-	UINT32 TrackNum; //which track is on cache
-*/
 };
 
 typedef struct VirtioBlkBase
@@ -148,10 +146,7 @@ typedef struct VirtioBlkBase
 	APTR				VirtioBlk_SysBase;
 	ExpansionBase* ExpansionBase;
 	VirtioBase* VirtioBase;
-	CacheBase* CacheBase;
 
-	UINT32				VirtioBlkIRQ;
-	struct Interrupt	*VirtioBlkIntServer;
 	Task				*VirtioBlk_BootTask;
 
 	struct VirtioBlkUnit VirtioBlkUnit[VB_UNIT_MAX];
@@ -217,8 +212,8 @@ int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
 __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, VirtioBlkBase *VirtioBlkBase, APTR SysBase);
 
 //callbacks
-void Read(VirtioBlkBase *VirtioBlkBase, UINT32 sector_start, UINT32 num_sectors, UINT8* buf);
-void Write(VirtioBlkBase *VirtioBlkBase, UINT32 sector_start, UINT32 num_sectors, UINT8* buf);
+void Read(struct VirtioBlkTaskData *UserData, UINT32 sector_start, UINT32 num_sectors, UINT8* buf);
+void Write(struct VirtioBlkTaskData *UserData, UINT32 sector_start, UINT32 num_sectors, UINT8* buf);
 #endif //virtio_blk_internal_h
 
 

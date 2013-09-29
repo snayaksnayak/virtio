@@ -35,7 +35,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 
-	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
+	struct CacheBase *CacheBase = vbu->CacheBase;
 
 	//set till-now-number-of-bytes-read is zero.
 	ioreq->io_Actual = 0;
@@ -48,8 +48,7 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	DPrintF("VirtioBlkRead: sector_offset = %d\n", sector_offset);
 	DPrintF("VirtioBlkRead: sectors_to_read = %d\n", sectors_to_read);
 
-	UINT32 ipl;
-	ipl = Disable();
+	Forbid();
 	if((ioreq->io_Offset +
 	sectors_to_read - 1)
 	>=
@@ -76,8 +75,8 @@ void VirtioBlkRead(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
 		DPrintF("VirtioBlkRead: late service\n");
 	}
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
@@ -88,7 +87,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 
-	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
+	struct CacheBase *CacheBase = vbu->CacheBase;
 
 	//set till-now-number-of-bytes-write is zero.
 	ioreq->io_Actual = 0;
@@ -101,8 +100,7 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	DPrintF("VirtioBlkWrite: sector_offset = %d\n", sector_offset);
 	DPrintF("VirtioBlkWrite: sectors_to_write = %d\n", sectors_to_write);
 
-	UINT32 ipl;
-	ipl = Disable();
+	Forbid();
 	if((ioreq->io_Offset +
 	sectors_to_write - 1)
 	>=
@@ -129,8 +127,8 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
 		DPrintF("VirtioBlkWrite: late service\n");
 	}
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
@@ -138,27 +136,28 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 {
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	DPrintF("Inside VirtioBlkGetDeviceInfo!\n");
-	UINT32 ipl = Disable();
+
+	//forbid-permit is not needed here
+	Forbid();
 	*((struct VirtioBlkDeviceInfo*)(ioreq->io_Data)) = vb->Info;
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
 void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-//	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
-	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
-
+	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+	struct CacheBase *CacheBase = vbu->CacheBase;
 
 	DPrintF("Inside VirtioBlkClear!\n");
-	UINT32 ipl = Disable();
 
+	Forbid();
 	CacheDiscard();
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
@@ -166,11 +165,10 @@ void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	DPrintF("Inside VirtioBlkUpdate!\n");
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
-	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
+	struct CacheBase *CacheBase = vbu->CacheBase;
 
 
-	UINT32 ipl;
-	ipl = Disable();
+	Forbid();
 	if(vbu->DiskPresence == VBF_NO_DISK)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
@@ -187,8 +185,8 @@ void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 		CLEAR_BITS(ioreq->io_Flags, IOF_QUICK);
 		DPrintF("VirtioBlkUpdate: late service\n");
 	}
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
@@ -196,11 +194,12 @@ void VirtioBlkGetDiskChangeCount(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *
 {
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 	DPrintF("Inside VirtioBlkGetDiskChangeCount!\n");
-	UINT32 ipl = Disable();
+
+	Forbid();
 	ioreq->io_Actual = vbu->DiskChangeCounter;
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
@@ -209,12 +208,13 @@ void VirtioBlkGetDiskPresenceStatus(VirtioBlkBase *VirtioBlkBase, struct IOStdRe
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
 	DPrintF("Inside VirtioBlkGetDiskPresenceStatus!\n");
-	UINT32 ipl = Disable();
+
+	Forbid();
 	vbu->DiskPresence = VirtioBlk_getDiskPresence(VirtioBlkBase, vb);
 	ioreq->io_Actual = vbu->DiskPresence;
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 
@@ -222,11 +222,12 @@ void VirtioBlkEject(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
 	DPrintF("Inside VirtioBlkEject!\n");
-	UINT32 ipl = Disable();
+
+	Forbid();
 	vbu->DiskChangeCounter++;
 	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
 
-	Enable(ipl);
 	return;
 }
 

@@ -28,6 +28,10 @@ void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq,
 	return;
 }
 
+//TODO: Check why calling this function
+//inside forbid-permit doesn't works.
+//We get "Never Reached" from Wait().
+//Call this function atomically
 void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 {
 	struct  Unit *unit;
@@ -37,82 +41,29 @@ void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 	unit = (struct  Unit *)&((VirtioBlkBase->VirtioBlkUnit[unit_num]).vb_unit);
 	vbu = &(VirtioBlkBase->VirtioBlkUnit[unit_num]);
 
-	struct CacheBase *CacheBase = VirtioBlkBase->CacheBase;
+	struct CacheBase *CacheBase = vbu->CacheBase;
 
-	while(1)
+	curr_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
+	DPrintF("VirtioBlk_process_request curr_req = %x\n", curr_req);
+	if (curr_req != NULL)
 	{
-		UINT32 ipl;
-		ipl = Disable();
-
-		curr_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
-		DPrintF("VirtioBlk_process_request curr_req = %x\n", curr_req);
-		if (curr_req != NULL)
+		if(TEST_BITS(curr_req->io_Flags, IOF_CURRENT))
 		{
-			if(TEST_BITS(curr_req->io_Flags, IOF_CURRENT)
-			|| TEST_BITS(curr_req->io_Flags, IOF_SERVICING))
+			if(curr_req->io_Command == CMD_READ)
 			{
-				if(TEST_BITS(curr_req->io_Flags, IOF_SERVICING))
-				{
-					DPrintF("VirtioBlk_process_request curr_req is IOF_SERVICING\n");
-					CLEAR_BITS(curr_req->io_Flags, IOF_SERVICING);
-					SET_BITS(curr_req->io_Flags, IOF_CURRENT);
-				}
-				else
-				{
-					DPrintF("VirtioBlk_process_request curr_req is IOF_CURRENT\n");
-					//it is IOF_CURRENT
-				}
-
-				if(curr_req->io_Command == CMD_READ)
-				{
-					CacheRead(curr_req->io_Offset, curr_req->io_Length, curr_req->io_Data);
-					DPrintF("VirtioBlk_process_request: READ: One request complete\n");
-					Remove((struct Node *)curr_req);
-					CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
-					SET_BITS(curr_req->io_Flags, IOF_DONE);
-					curr_req->io_Error = 0;
-					Enable(ipl);
-
-					ReplyMsg((struct Message *)curr_req);
-					break;
-				}
-				else if (curr_req->io_Command == CMD_WRITE)
-				{
-					CacheWrite(curr_req->io_Offset, curr_req->io_Length, curr_req->io_Data);
-					DPrintF("VirtioBlk_process_request: WRITE: One request complete\n");
-					Remove((struct Node *)curr_req);
-					CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
-					SET_BITS(curr_req->io_Flags, IOF_DONE);
-					curr_req->io_Error = 0;
-					Enable(ipl);
-
-					ReplyMsg((struct Message *)curr_req);
-					break;
-				}
-				else if (curr_req->io_Command == CMD_UPDATE)
-				{
-					CacheSync();
-					DPrintF("VirtioBlk_process_request: UPDATE: One request complete\n");
-					Remove((struct Node *)curr_req);
-					CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
-					SET_BITS(curr_req->io_Flags, IOF_DONE);
-					curr_req->io_Error = 0;
-					Enable(ipl);
-
-					ReplyMsg((struct Message *)curr_req);
-					break;
-				}
+				CacheRead(curr_req->io_Offset, curr_req->io_Length, curr_req->io_Data);
+				DPrintF("VirtioBlk_process_request: READ: One request complete\n");
 			}
-			else
+			else if (curr_req->io_Command == CMD_WRITE)
 			{
-				Enable(ipl);
-				break;
+				CacheWrite(curr_req->io_Offset, curr_req->io_Length, curr_req->io_Data);
+				DPrintF("VirtioBlk_process_request: WRITE: One request complete\n");
 			}
-		}
-		else
-		{
-			Enable(ipl);
-			break;
+			else if (curr_req->io_Command == CMD_UPDATE)
+			{
+				CacheSync();
+				DPrintF("VirtioBlk_process_request: UPDATE: One request complete\n");
+			}
 		}
 	}
 
@@ -296,26 +247,31 @@ void VirtioBlk_transfer(VirtioBlkBase *VirtioBlkBase, VirtioBlk* vb, UINT32 sect
 
 }
 
-//TODO: now it is just for testing
-void Read(VirtioBlkBase *VirtioBlkBase, UINT32 sector_start, UINT32 num_sectors, UINT8* buf)
+void Read(struct VirtioBlkTaskData *UserData, UINT32 sector_start, UINT32 num_sectors, UINT8* buf)
 {
+	VirtioBlkBase* VirtioBlkBase = UserData->VirtioBlkBase;
+	UINT32 unit_num = UserData->unitNum;
+	DPrintF("Read callback: unit_num = %d\n", unit_num);
+
 	struct VirtioBlkUnit *vbu;
-	vbu = &(VirtioBlkBase->VirtioBlkUnit[0]);
+	vbu = &(VirtioBlkBase->VirtioBlkUnit[unit_num]);
 
 	VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), sector_start, num_sectors, VB_READ, (UINT8 *)buf);
 
 	DPrintF("Read callback: wait for track read irq\n");
-	Wait(1 << (VirtioBlkBase->VirtioBlkUnit[0].taskWakeupSignal));
+	Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 }
 
-//TODO: now it is just for testing
-void Write(VirtioBlkBase *VirtioBlkBase, UINT32 sector_start, UINT32 num_sectors, UINT8* buf)
+void Write(struct VirtioBlkTaskData *UserData, UINT32 sector_start, UINT32 num_sectors, UINT8* buf)
 {
+	VirtioBlkBase* VirtioBlkBase = UserData->VirtioBlkBase;
+	UINT32 unit_num = UserData->unitNum;
+
 	struct VirtioBlkUnit *vbu;
-	vbu = &(VirtioBlkBase->VirtioBlkUnit[0]);
+	vbu = &(VirtioBlkBase->VirtioBlkUnit[unit_num]);
 
 	VirtioBlk_transfer(VirtioBlkBase, &(vbu->vb), sector_start, num_sectors, VB_WRITE, (UINT8 *)buf);
 
 	DPrintF("Write callback: wait for track write irq\n");
-	Wait(1 << (VirtioBlkBase->VirtioBlkUnit[0].taskWakeupSignal));
+	Wait(1 << (VirtioBlkBase->VirtioBlkUnit[unit_num].taskWakeupSignal));
 }

@@ -7,6 +7,7 @@
 #include "device.h"
 #include "io.h"
 #include "virtio.h"
+#include "cache.h"
 
 // Units
 #define VB_UNIT_MAX    4
@@ -97,6 +98,10 @@ struct VirtioBlkUnit
 {
 	struct Unit vb_unit;
 	struct VirtioBlk vb;
+
+	CacheBase* CacheBase;
+	struct Interrupt	*VirtioBlkIntServer;
+
 	Task				*VirtioBlk_WorkerTask;
 	struct VirtioBlkTaskData *VirtioBlk_WorkerTaskData;
 	INT8 taskWakeupSignal;
@@ -109,8 +114,6 @@ typedef struct VirtioBlkBase
 	ExpansionBase* ExpansionBase;
 	VirtioBase* VirtioBase;
 
-	UINT32				VirtioBlkIRQ;
-	struct Interrupt	*VirtioBlkIntServer;
 	Task				*VirtioBlk_BootTask;
 
 	struct VirtioBlkUnit VirtioBlkUnit[VB_UNIT_MAX];

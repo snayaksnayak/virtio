@@ -76,17 +76,29 @@ void virtio_blk_BeginIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 
 void virtio_blk_AbortIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
-	UINT32 ipl = Disable();
+	Forbid();
 	if(ioreq->io_Message.mn_Node.ln_Type != NT_REPLYMSG)
     {
-		Remove((struct Node *)ioreq);
-		ioreq->io_Error = IOERR_ABORTED;
-		Enable(ipl);
-		ReplyMsg((struct Message *)ioreq);
-		return;
+		if(TEST_BITS(ioreq->io_Flags, IOF_QUEUED))
+		{
+			//these operations operate on single bits only.
+			//if, flag values are totally exclusive of each other,
+			//we can directly use assignment rather than
+			//using these two operations simultaneously.
+			CLEAR_BITS(ioreq->io_Flags, IOF_QUEUED);
+			SET_BITS(ioreq->io_Flags, IOF_DONE);
+			VirtioBlk_end_command(VirtioBlkBase, ioreq, IOERR_ABORTED );
+			Permit();
+			return;
+		}
+		else
+		{
+			Permit();
+			return;
+		}
 	}
 
-	Enable(ipl);
+	Permit();
 	return;
 }
 

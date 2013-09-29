@@ -67,8 +67,7 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 	mport = &(unit->unit_MsgPort);
 	while(1)
 	{
-		UINT32 ipl;
-		ipl = Disable();
+		Forbid();
 
 		curr_req = (struct IOStdReq *)GetHead(&(unit->unit_MsgPort.mp_MsgList));
 		DPrintF("VirtioBlk_CheckPort curr_req = %x\n", curr_req);
@@ -78,18 +77,36 @@ void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase)
 			{
 				CLEAR_BITS(curr_req->io_Flags, IOF_QUEUED);
 				SET_BITS(curr_req->io_Flags, IOF_CURRENT);
-				Enable(ipl);
+				Permit();
+
 				//start processing another request
 				VirtioBlk_process_request(VirtioBlkBase, unit_num);
+
+				Forbid();
+				Remove((struct Node *)curr_req);
+				CLEAR_BITS(curr_req->io_Flags, IOF_CURRENT);
+				SET_BITS(curr_req->io_Flags, IOF_DONE);
+				curr_req->io_Error = 0;
+				Permit();
+
+				ReplyMsg((struct Message *)curr_req);
+			}
+			else if (TEST_BITS(curr_req->io_Flags, IOF_DONE))
+			{
+				//probably already aborted!
+				Remove((struct Node *)curr_req);
+				Permit();
+
+				ReplyMsg((struct Message *)curr_req);
 			}
 			else
 			{
-				Enable(ipl);
+				Permit();
 			}
 		}
 		else
 		{
-			Enable(ipl);
+			Permit();
 			DPrintF("VirtioBlk_CheckPort waiting on unit_num= %d, unit= %x, port= %x\n", unit_num, unit, mport);
 			WaitPort(mport);
 			DPrintF("VirtioBlk_CheckPort waiting over\n");
