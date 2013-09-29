@@ -48,6 +48,16 @@ APTR virtio_blk_FuncTab[] =
  (APTR) ((UINT32)-1)
 };
 
+void Launch_VirtioBlkUnit0(void *SysBase)
+{
+	DPrintF("===== Start VirtioBlkUnit0 =====\n");
+}
+
+void Switch_VirtioBlkUnit0(void *SysBase)
+{
+	DPrintF("===== End VirtioBlkUnit0 =====\n");
+}
+
 struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UINT32 *segList, struct SysBase *SysBase)
 {
 	VirtioBlkBase->VirtioBlk_SysBase = SysBase;
@@ -172,6 +182,10 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		DPrintF("virtio_blk_InitDev: create a worker task and wait\n");
 		SetSignal(0L, SIGF_SINGLE);
 		VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask = TaskCreate(TaskName[unit_num], VirtioBlk_WorkerTaskFunction, VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTaskData, 8192, 20);
+
+		(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask)->Launch = Launch_VirtioBlkUnit0;
+		(VirtioBlkBase->VirtioBlkUnit[unit_num].VirtioBlk_WorkerTask)->Switch = Switch_VirtioBlkUnit0;
+
 		Wait(SIGF_SINGLE);
 		DPrintF("virtio_blk_InitDev: a worker task created, waiting finished\n");
 

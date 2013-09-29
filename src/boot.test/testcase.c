@@ -15,6 +15,8 @@
 
 static struct TestBase *test_Init(struct TestBase *TestBase, UINT32 *segList, struct SysBase *SysBase);
 static void test_TestTask(APTR data, struct SysBase *SysBase);
+static void test_TestTask0(APTR data, struct SysBase *SysBase);
+static void test_TestTask1(APTR data, struct SysBase *SysBase);
 
 static const char name[] = "test.device";
 static const char version[] = "test 0.1\n";
@@ -74,12 +76,38 @@ static volatile const struct Resident ROMTag =
 	&InitTab
 };
 
+void Launch_TestSuite0(void *SysBase)
+{
+	DPrintF("===== Start TestSuite0 =====\n");
+}
+
+void Switch_TestSuite0(void *SysBase)
+{
+	DPrintF("===== End TestSuite0 =====\n");
+}
+
+void Launch_TestSuite1(void *SysBase)
+{
+	DPrintF("===== Start TestSuite1 =====\n");
+}
+
+void Switch_TestSuite1(void *SysBase)
+{
+	DPrintF("===== End TestSuite1 =====\n");
+}
+
 static struct TestBase *test_Init(struct TestBase *TestBase, UINT32 *segList, struct SysBase *SysBase)
 {
 	TestBase->SysBase = SysBase;
 	// Only initialise here, dont do long stuff, Multitasking is enabled. But we are running here with prio 100
 	// For this we initialise a worker Task with Prio 0
 	TestBase->WorkerTask = TaskCreate("TestSuite", test_TestTask, SysBase, 4096*2, 0); //8kb Stack should be enough
+	Task *WorkerTask0 = TaskCreate("TestSuite0", test_TestTask0, SysBase, 4096*2, 0);
+	WorkerTask0->Launch = Launch_TestSuite0;
+	WorkerTask0->Switch = Switch_TestSuite0;
+	Task *WorkerTask1 = TaskCreate("TestSuite1", test_TestTask1, SysBase, 4096*2, 0);
+	WorkerTask1->Launch = Launch_TestSuite1;
+	WorkerTask1->Switch = Switch_TestSuite1;
 //	DPrintF("[INIT] Testinitialisation finished\n");
 	return TestBase;
 }
@@ -1103,9 +1131,9 @@ static void test_TestTask(APTR data, struct SysBase *SysBase)
 	DPrintF("SysBase %x\n", SysBase);
 	DPrintF("SysBase->IDNestcnt %x\n", SysBase->IDNestCnt);
 
-	test_virtio_blk_performance(SysBase);
 	goto out;
 
+	test_virtio_blk_performance(SysBase);
 	test_virtio_blk(SysBase);
 	DetectVirtio(SysBase);
 	test_mhz_delay(SysBase, 5);
@@ -1128,4 +1156,206 @@ out:
 }
 
 
+//==========concurrency test===========
 
+void test_virtio_blk0(APTR SysBase);
+void test_virtio_blk1(APTR SysBase);
+
+static void test_TestTask0(APTR data, struct SysBase *SysBase)
+{
+	test_virtio_blk0(SysBase);
+	DPrintF("[TESTTASK0] Finished, we are leaving... bye bye... till next reboot\n");
+}
+static void test_TestTask1(APTR data, struct SysBase *SysBase)
+{
+	test_virtio_blk1(SysBase);
+	DPrintF("[TESTTASK1] Finished, we are leaving... bye bye... till next reboot\n");
+}
+
+void test_virtio_blk0(APTR SysBase)
+{
+	struct MsgPort *mp=NULL;
+	struct IOStdReq *io=NULL;
+
+	// We need a proper MsgPort to get Messages
+	mp = CreateMsgPort();
+	if (mp == NULL)
+	{
+		DPrintF("Couldnt create Message port (no Memory?)\n");
+		goto end;
+	}
+
+	// Now we need a VirtioBlkRequest Structure
+	io = CreateIORequest(mp, sizeof(struct IOStdReq));
+	if (io == NULL)
+	{
+		DPrintF("Couldnt create IOStdReq (no Memory?)\n");
+		goto end;
+	}
+
+	//lets open the device
+	INT32 ret = OpenDevice("virtio_blk.device", 0, (struct IORequest *)io, 0);
+	if (ret != 0)
+	{
+		DPrintF("OpenDevice virtio_blk failed for virtio_blk unit 0\n");
+		goto end;
+	}
+
+	// lets try to read the device
+
+	//number of sectors to read/write at once
+	#define NUM_SECTORS0 1
+
+	UINT8* buf = AllocVec(512*NUM_SECTORS0, MEMF_PUBLIC);
+	if (buf == NULL)
+	{
+		DPrintF("ERROR: No Buffer\n");
+	}
+
+	int j = NUM_SECTORS0;
+	for(int i = 0; i < 64*15; i+=j) //8192 max
+	{
+		// lets try a to read or write some sectors from the device
+
+		io->io_Offset = i;
+		io->io_Length = NUM_SECTORS0*512;
+
+		//to READ sectors, enable below two lines
+		io->io_Command = CMD_READ;
+		memset(buf, 0, 512*NUM_SECTORS0);
+
+		//to WRITE sectors, enable below two lines
+		//io->io_Command = CMD_WRITE;
+		//for(int c=0; c<j; c++){memset(buf+(512*c), (UINT8)(i+c), 512);}
+
+		io->io_Data = buf;
+
+		// post request to the virtio device in sync way
+		DPrintF("We will read/write a sector from the device\n");
+		DoIO((struct IORequest *) io );
+		DPrintF("Return after reading/writing a sector from the device\n");
+
+		for(int k=0; k<j; k++)
+		{
+			DPrintF("buf[512*%d+0]= %x\n", k, buf[512*k+0]);
+		}
+		test_mhz_delay(SysBase, 1);
+	}
+
+	FreeVec(buf);
+
+	// Close device
+	DPrintF("Closing virtio_blk Device 0\n");
+	CloseDevice((struct IORequest *)io);
+	DeleteIORequest((struct IORequest *)io);
+	DeleteMsgPort(mp);
+
+	mp = NULL;
+	io = NULL;
+
+end:
+
+	if (io != NULL)
+	{
+		DeleteIORequest((struct IORequest *)io);
+	}
+
+	if (mp != NULL)
+	{
+		DeleteMsgPort(mp);
+	}
+}
+
+void test_virtio_blk1(APTR SysBase)
+{
+	struct MsgPort *mp=NULL;
+	struct IOStdReq *io=NULL;
+
+	// We need a proper MsgPort to get Messages
+	mp = CreateMsgPort();
+	if (mp == NULL)
+	{
+		DPrintF("Couldnt create Message port (no Memory?)\n");
+		goto end;
+	}
+
+	// Now we need a VirtioBlkRequest Structure
+	io = CreateIORequest(mp, sizeof(struct IOStdReq));
+	if (io == NULL)
+	{
+		DPrintF("Couldnt create IOStdReq (no Memory?)\n");
+		goto end;
+	}
+
+	//lets open the device
+	INT32 ret = OpenDevice("virtio_blk.device", 0, (struct IORequest *)io, 0);
+	if (ret != 0)
+	{
+		DPrintF("OpenDevice virtio_blk failed for virtio_blk unit 0\n");
+		goto end;
+	}
+
+	// lets try to read the device
+
+	//number of sectors to read/write at once
+	#define NUM_SECTORS1 1
+
+	UINT8* buf = AllocVec(512*NUM_SECTORS1, MEMF_PUBLIC);
+	if (buf == NULL)
+	{
+		DPrintF("ERROR: No Buffer\n");
+	}
+
+	int j = NUM_SECTORS1;
+	for(int i = 0; i < 64*15; i+=j) //8192 max
+	{
+		// lets try a to read or write some sectors from the device
+
+		io->io_Offset = i;
+		io->io_Length = NUM_SECTORS1*512;
+
+		//to READ sectors, enable below two lines
+		io->io_Command = CMD_READ;
+		memset(buf, 0, 512*NUM_SECTORS1);
+
+		//to WRITE sectors, enable below two lines
+		//io->io_Command = CMD_WRITE;
+		//for(int c=0; c<j; c++){memset(buf+(512*c), (UINT8)(i+c), 512);}
+
+		io->io_Data = buf;
+
+		// post request to the virtio device in sync way
+		DPrintF("We will read/write a sector from the device\n");
+		DoIO((struct IORequest *) io );
+		DPrintF("Return after reading/writing a sector from the device\n");
+
+		for(int k=0; k<j; k++)
+		{
+			DPrintF("buf[512*%d+0]= %x\n", k, buf[512*k+0]);
+		}
+		test_mhz_delay(SysBase, 2);
+	}
+
+	FreeVec(buf);
+
+	// Close device
+	DPrintF("Closing virtio_blk Device 0\n");
+	CloseDevice((struct IORequest *)io);
+	DeleteIORequest((struct IORequest *)io);
+	DeleteMsgPort(mp);
+
+	mp = NULL;
+	io = NULL;
+
+end:
+
+	if (io != NULL)
+	{
+		DeleteIORequest((struct IORequest *)io);
+	}
+
+	if (mp != NULL)
+	{
+		DeleteMsgPort(mp);
+	}
+}
