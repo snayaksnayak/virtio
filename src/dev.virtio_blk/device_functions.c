@@ -62,7 +62,9 @@ void virtio_blk_BeginIO(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	|| cmd == VB_GETDISKCHANGECOUNT
 	|| cmd == VB_GETDISKPRESENCESTATUS
 	|| cmd == VB_EJECT
-	|| cmd == VB_FORMAT)
+	|| cmd == VB_FORMAT
+	|| cmd == VB_GETNUMTRACKS
+	|| cmd == VB_WRITEPROTECTIONSTATUS)
 	{
 		//valid command
 	}

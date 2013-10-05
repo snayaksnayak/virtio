@@ -177,6 +177,7 @@ struct VirtioBlkBase *virtio_blk_InitDev(struct VirtioBlkBase *VirtioBlkBase, UI
 		//initialize unit structure
 		VirtioBlkBase->VirtioBlkUnit[unit_num].DiskPresence = VirtioBlk_getDiskPresence(VirtioBlkBase, vb);
 		VirtioBlkBase->VirtioBlkUnit[unit_num].DiskChangeCounter = 0;
+		VirtioBlkBase->VirtioBlkUnit[unit_num].WriteProtection = VirtioBlk_getWriteProtection(VirtioBlkBase, vb);
 
 		//start worker task
 		DPrintF("virtio_blk_InitDev: create a worker task and wait\n");

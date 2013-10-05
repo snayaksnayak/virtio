@@ -28,6 +28,10 @@
 #define VBF_NO_DISK	0x01
 #define VBF_DISK_IN	0x00
 
+//disk write protection status
+#define VBF_WRITE_PROTECTED 0x01
+#define VBF_NOT_WRITE_PROTECTED 0x00
+
 //flags for cache
 #define VBF_CLEAN      (0)
 #define VBF_DIRTY      (1<<0)
@@ -42,6 +46,10 @@
 #define VB_GETDISKPRESENCESTATUS (CMD_NONSTD+2)
 #define VB_EJECT (CMD_NONSTD+3)
 #define VB_FORMAT (CMD_NONSTD+4)
+#define VB_GETNUMTRACKS (CMD_NONSTD+5)
+#define VB_WRITEPROTECTIONSTATUS (CMD_NONSTD+6)
+//TD_ADDCHANGEINT
+//TD_REMCHANGEINT
 
 //device id
 #define VIRTIO_BLK_DEVICE_ID 0x1001
@@ -137,6 +145,7 @@ struct VirtioBlkUnit
 
 	UINT8 DiskPresence; //disk present in drive?
 	UINT32 DiskChangeCounter; //disk change counter
+	UINT8 WriteProtection; //write protected?
 
 };
 
@@ -186,8 +195,10 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkGetNumTracks(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkGetDiskChangeCount(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkGetDiskPresenceStatus(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
+void VirtioBlkGetWriteProtectionStatus(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkEject(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 void VirtioBlkFormat(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq);
 
@@ -206,7 +217,7 @@ INT8 VirtioBlk_InitMsgPort(struct MsgPort *mport, APTR *SysBase);
 void VirtioBlk_CheckPort(UINT32 unit_num, VirtioBlkBase *VirtioBlkBase);
 
 int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
-
+int VirtioBlk_getWriteProtection(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb);
 
 //irq handler
 __attribute__((no_instrument_function)) BOOL VirtioBlkIRQServer(UINT32 number, VirtioBlkBase *VirtioBlkBase, APTR SysBase);

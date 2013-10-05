@@ -28,9 +28,6 @@ void VirtioBlk_end_command(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq,
 	return;
 }
 
-//TODO: Check why calling this function
-//inside forbid-permit doesn't works.
-//We get "Never Reached" from Wait().
 //Call this function atomically
 void VirtioBlk_process_request(VirtioBlkBase *VirtioBlkBase, UINT32 unit_num)
 {
@@ -133,6 +130,12 @@ int VirtioBlk_getDiskPresence(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
 {
 	DPrintF("Disk present\n");
 	return VBF_DISK_IN;
+}
+
+int VirtioBlk_getWriteProtection(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)
+{
+	DPrintF("Disk not write protected\n");
+	return VBF_NOT_WRITE_PROTECTED;
 }
 
 int VirtioBlk_configuration(VirtioBlkBase *VirtioBlkBase, VirtioBlk *vb)

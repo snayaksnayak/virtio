@@ -114,6 +114,10 @@ void VirtioBlkWrite(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
 	}
+	else if(vbu->WriteProtection == VBF_WRITE_PROTECTED)
+	{
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_WriteProtected );
+	}
 	else if(CacheHit(ioreq->io_Offset, ioreq->io_Length))
 	{
 		ioreq->io_Actual = CacheWrite(ioreq->io_Offset, ioreq->io_Length, ioreq->io_Data);
@@ -146,6 +150,20 @@ void VirtioBlkGetDeviceInfo(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq
 	return;
 }
 
+void VirtioBlkGetNumTracks(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
+{
+	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
+	DPrintF("Inside VirtioBlkGetNumTracks!\n");
+
+	//forbid-permit is not needed here
+	Forbid();
+	ioreq->io_Actual = vb->Info.geometry.cylinders * vb->Info.geometry.heads;
+	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
+
+	return;
+}
+
 void VirtioBlkClear(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
@@ -172,6 +190,10 @@ void VirtioBlkUpdate(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 	if(vbu->DiskPresence == VBF_NO_DISK)
 	{
 		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_DiskNotFound );
+	}
+	else if(vbu->WriteProtection == VBF_WRITE_PROTECTED)
+	{
+		VirtioBlk_end_command(VirtioBlkBase, ioreq, BLK_ERR_WriteProtected );
 	}
 	else if(!CacheDirty())
 	{
@@ -218,6 +240,21 @@ void VirtioBlkGetDiskPresenceStatus(VirtioBlkBase *VirtioBlkBase, struct IOStdRe
 	return;
 }
 
+void VirtioBlkGetWriteProtectionStatus(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
+{
+	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
+	VirtioBlk *vb = &(((struct VirtioBlkUnit*)ioreq->io_Unit)->vb);
+	DPrintF("Inside VirtioBlkGetWriteProtectionStatus!\n");
+
+	Forbid();
+	vbu->WriteProtection = VirtioBlk_getWriteProtection(VirtioBlkBase, vb);
+	ioreq->io_Actual = vbu->WriteProtection;
+	VirtioBlk_end_command(VirtioBlkBase, (struct IOStdReq *)ioreq, 0);
+	Permit();
+
+	return;
+}
+
 void VirtioBlkEject(VirtioBlkBase *VirtioBlkBase, struct IOStdReq *ioreq)
 {
 	struct VirtioBlkUnit *vbu = (struct VirtioBlkUnit*)ioreq->io_Unit;
@@ -255,7 +292,9 @@ void (*VirtioBlkCmdVector[])(VirtioBlkBase *, struct IOStdReq * ) =
 	VirtioBlkGetDiskPresenceStatus,
 	VirtioBlkEject,
 	//TODO: Right now there is no difference between WRITE and FORMAT
-	VirtioBlkWrite //VirtioBlkFormat
+	VirtioBlkWrite, //VirtioBlkFormat
+	VirtioBlkGetNumTracks,
+	VirtioBlkGetWriteProtectionStatus
 };
 
 
