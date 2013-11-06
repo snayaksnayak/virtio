@@ -1,6 +1,5 @@
 ARCH =i586-elf-
 CC = ${ARCH}gcc
-CPP = ${ARCH}g++
 AS = ${ARCH}as
 LD = ${ARCH}ld
 AR = ${ARCH}ar
@@ -78,7 +77,8 @@ $(OBJDIR)/kernel.img: $(OBJDIR)/kernel.bin
 	#${STRIP} $<
 
 $(OBJDIR)/kernel.bin: arch_x86.ld $(OBJS)
-#make sure that when ../poweros_x86/bin/kernel.bin is created, it gets created with "ld -r" so that it can be reused by "ld" again here
+	#make sure that when ../poweros_x86/bin/kernel.bin is created, it gets created with "ld -r" so that it can be reused by "ld" again here
+	#but here -r shouldn't be used, because this kernel.bin should boot and need not be relocatable.
 	${LD} ${LDFLAGS} ../poweros_x86/bin/kernel.bin $(OBJS) -Map bin/kernel.map -o $@ -T arch_x86.ld
 
 clean:
